@@ -1,0 +1,45 @@
+[workspace]
+default-members = ["crates/moonmap-app"]
+members         = ["crates/moonmap-app", "crates/moonmap-core"]
+resolver        = "3"
+
+[workspace.package]
+edition      = "2024"
+publish      = false
+rust-version = "1.99"
+version      = "0.1.0"
+
+[workspace.dependencies]
+anyhow              = "1"
+dispatch2           = "0.3"
+fs2                 = "0.4"
+moonframe           = { branch = "main", default-features = false, features = ["acp", "map", "studio"], git = "https://github.com/moonframehq/moonframe" }
+moonmap-core        = { path = "crates/moonmap-core" }
+objc2               = "0.6"
+objc2-core-location = { default-features = false, features = ["CLLocation", "CLLocationManager", "std"], version = "0.3" }
+objc2-foundation    = { default-features = false, features = ["NSBundle", "NSDate", "NSRunLoop", "NSString", "std"], version = "0.3" }
+serde               = { features = ["derive"], version = "1" }
+serde_json          = "1"
+tempfile            = "3"
+thiserror           = "2"
+ureq                = { features = ["json"], version = "3.5" }
+url                 = "2"
+
+[workspace.lints.rust]
+unsafe_code           = "deny"
+unused_qualifications = "deny"
+
+[workspace.lints.clippy]
+expect_used = "deny"
+unwrap_used = "deny"
+
+[profile.release]
+lto = "thin"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# The `pulse` pin option (a breathing halo on My Location) lives on a local
+# Moonframe branch until it lands upstream; drop this patch once it has.
+[patch."https://github.com/moonframehq/moonframe"]
+moonframe = { path = "../moonframe-map-pulse/crates/moonframe" }

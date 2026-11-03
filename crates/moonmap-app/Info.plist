@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>dev.moonmap.app</string>
+	<key>CFBundleName</key>
+	<string>Moonmap</string>
+	<key>CFBundleDisplayName</key>
+	<string>Moonmap</string>
+	<key>CFBundleExecutable</key>
+	<string>moonmap</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>0.1.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSLocationUsageDescription</key>
+	<string>Moonmap shows where you are on the map and gives directions and drive times from there.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Moonmap shows where you are on the map and gives directions and drive times from there.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>Directions</key>
+		<string>Moonmap needs your precise location to place you on the street and route from where you stand.</string>
+	</dict>
+</dict>
+</plist>

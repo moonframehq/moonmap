@@ -1,0 +1,34 @@
+[package]
+default-run            = "moonmap"
+edition.workspace      = true
+name                   = "moonmap-app"
+publish.workspace      = true
+rust-version.workspace = true
+version.workspace      = true
+
+[[bin]]
+name = "moonmap"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace       = true
+fs2.workspace          = true
+moonframe.workspace    = true
+moonmap-core.workspace = true
+serde.workspace        = true
+serde_json.workspace   = true
+tempfile.workspace     = true
+ureq.workspace         = true
+url.workspace          = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+dispatch2.workspace           = true
+objc2.workspace               = true
+objc2-core-location.workspace = true
+objc2-foundation.workspace    = true
+
+[lints]
+workspace = true
+
+[features]
+capture = ["moonframe/capture"]

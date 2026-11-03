@@ -1,0 +1,10 @@
+# The agent behind the sparkles (Moonframe's built-in `feedback` mod). The
+# provider lives in Moonmap's app tree so agents work in this repository,
+# not in Moonframe's dependency checkout. They ask before each change.
+interval = 0.25
+kind     = "native"
+
+[settings]
+agent    = "claude"
+allow    = { feedback = "read" }
+starters = ["feedback"]

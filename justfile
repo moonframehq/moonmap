@@ -1,0 +1,68 @@
+nightly_toolchain := "nightly-2026-06-20"
+
+default:
+    @just --list
+
+# Runs the debug build from target/dev/Moonmap.app: macOS gives your
+# location only to an app bundle. Luau still reloads from the source tree.
+run *args: dev-bundle
+    target/dev/Moonmap.app/Contents/MacOS/moonmap {{args}}
+
+# Opens on a sample library of public places around Cupertino.
+demo: dev-bundle
+    MOONMAP_DEMO=1 target/dev/Moonmap.app/Contents/MacOS/moonmap
+
+dev-bundle:
+    cargo build --locked -p moonmap-app
+    mkdir -p target/dev/Moonmap.app/Contents/MacOS
+    cp crates/moonmap-app/Info.plist target/dev/Moonmap.app/Contents/Info.plist
+    cp target/debug/moonmap target/dev/Moonmap.app/Contents/MacOS/moonmap
+    codesign --force --sign - target/dev/Moonmap.app 2>/dev/null
+
+# A standalone release bundle in target/bundle, with the location keys.
+app:
+    cargo build --locked -p moonmap-app --release
+    target/release/moonmap bundle target/bundle
+    /usr/libexec/PlistBuddy -c "Merge crates/moonmap-app/Info.plist" target/bundle/Moonmap.app/Contents/Info.plist
+    codesign --force --deep --sign - target/bundle/Moonmap.app
+    @echo "target/bundle/Moonmap.app"
+
+build:
+    cargo build --locked -p moonmap-app --release
+
+check:
+    cargo run --locked -p moonmap-app -- --check
+
+# Capture the real GPUI frame with the demo library in an isolated folder.
+# A process id as the view captures that running window instead: the sparkles'
+# agent checks its change that way.
+screenshot output="target/screenshots/moonmap.png" view="home":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ {{quote(view)}} =~ ^[0-9]+$ ]]; then
+        exec scripts/window.sh {{quote(output)}} {{quote(view)}}
+    fi
+    cargo build --locked -p moonmap-app --features capture
+    python3 scripts/capture.py {{quote(output)}} {{quote(view)}}
+
+# Render the glyphs Moonframe's icon set lacks: blue for the sidebar,
+# ink for the map controls in light and dark appearances.
+icons:
+    for name in assets/icons/*.svg; do \
+        base=$(basename "$name" .svg); \
+        for tone in blue:#0a84ff ink:#3c3c43 night:#e5e5ea white:#ffffff; do \
+            sed "s/currentColor/${tone#*:}/g" "$name" | rsvg-convert -w 64 -h 64 -o "crates/moonmap-app/app/icons/$base-${tone%%:*}.png" || exit; \
+        done; \
+    done
+
+format:
+    cargo +{{nightly_toolchain}} fmt --all
+    taplo fmt
+
+format-check:
+    cargo +{{nightly_toolchain}} fmt --all -- --check
+    taplo fmt --check
+
+ci: format-check
+    cargo clippy --locked --workspace --all-targets -- -D warnings
+    cargo test --locked --workspace
