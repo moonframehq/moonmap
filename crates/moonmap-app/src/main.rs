@@ -62,7 +62,8 @@ fn run() -> Result<ExitCode> {
     lock.try_lock_exclusive()
         .map_err(|_| anyhow::anyhow!("Moonmap is already open on {}", root.display()))?;
     let library = root.join("library.json");
-    if demo && !library.exists() {
+    // Rebuilt every time, so a demo never keeps a position from an older one.
+    if demo {
         demo::library().save(&library)?;
     }
     let mut app = Moonframe::new(if demo { "moonmap-demo" } else { "moonmap" })
@@ -79,7 +80,9 @@ fn run() -> Result<ExitCode> {
     let online = !check;
     Ok(app
         .native("maps", move || {
-            provider::Maps::new(library.clone(), online).with_images(images.clone())
+            provider::Maps::new(library.clone(), online)
+                .with_images(images.clone())
+                .with_location(demo.then(demo::here))
         })
         .view("street-view", street_view::StreetView::new)
         .view("shield", shield::Shield::new)

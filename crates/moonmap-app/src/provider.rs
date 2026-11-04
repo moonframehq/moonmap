@@ -38,6 +38,8 @@ const LOOK_RADIUS_METERS: f64 = 150.0;
 const STREET_KEY: &str = "mapillary";
 /// How long a first launch waits for a location before showing the map.
 const LOCATION_WAIT: Duration = Duration::from_secs(10);
+/// How accurate a given position claims to be.
+const FIXED_POSITION_METERS: f64 = 5.0;
 /// Changes are written this long after the last one.
 const SAVE_AFTER: Duration = Duration::from_millis(800);
 
@@ -70,6 +72,7 @@ pub struct Maps {
     weather_at: Option<(Coordinate, Instant)>,
     /// The location service's last word; `None` until it says anything.
     located: Option<Located>,
+    position: Option<Coordinate>,
     dirty: Option<Instant>,
     error: String,
 }
@@ -93,6 +96,12 @@ impl Maps {
     /// Pictures go in `images`, the folder `ui.image` may show.
     pub fn with_images(mut self, images: PathBuf) -> Self {
         self.images = images;
+        self
+    }
+
+    /// A position to report in place of the location service's: a demo's.
+    pub fn with_location(mut self, position: Option<Coordinate>) -> Self {
+        self.position = position;
         self
     }
 
@@ -121,8 +130,24 @@ impl Maps {
             weather: None,
             weather_at: None,
             located: None,
+            position: None,
             dirty: None,
             error: String::new(),
+        }
+    }
+
+    /// Asks the location service, unless a position was given.
+    fn find_user(&self) {
+        match self.position {
+            Some(Coordinate { lat, lon }) => {
+                let fix = Located::Fix {
+                    lat,
+                    lon,
+                    meters: FIXED_POSITION_METERS,
+                };
+                let _ = self.answers.send(Answer::Location(fix));
+            },
+            None => location::watch(self.answers.clone()),
         }
     }
 
@@ -599,7 +624,7 @@ impl Native for Maps {
     fn start(&mut self, host: &Handle) -> Result<(), String> {
         self.library = Library::load(&self.path).map_err(|error| error.to_string())?;
         if self.online {
-            location::watch(self.answers.clone());
+            self.find_user();
         }
         self.refresh();
         self.publish(host);

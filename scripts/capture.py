@@ -27,6 +27,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     parser.add_argument("view", choices=VIEWS, default="home", nargs="?")
+    parser.add_argument("--appearance", choices=("light", "dark"), help="default: the system's")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parent.parent
     binary = repo / "target/debug/moonmap"
@@ -44,8 +45,8 @@ def main():
         if args.view in ("place", "directions", "loading"):
             source = patch(source, hook, hook + f'''\t\t\tif not state.captured and msg.value and msg.value.saved then
 \t\t\t\tstate.captured = true
-\t\t\t\tstate.pending_directions = {'"demo:apple-park"' if args.view == "directions" else "nil"}
-\t\t\t\treturn state, {{ send("open", {{ id = "demo:apple-park" }}) }}
+\t\t\t\tstate.pending_directions = {'"demo:palace"' if args.view == "directions" else "nil"}
+\t\t\t\treturn state, {{ send("open", {{ id = "demo:palace" }}) }}
 \t\t\tend
 ''')
         if args.view == "results":
@@ -83,6 +84,13 @@ def main():
             source = patch(source, 'popup = nil, focus = false,', f'popup = nil, focus = false, look = {look},')
         if args.view == "styles":
             source = patch(source, 'popup = nil, focus = false,', 'popup = "styles", focus = false,')
+        if args.appearance:
+            source = patch(source, hook, hook + f'''\t\t\tif not state.appearance then
+\t\t\t\tstate.appearance = true
+\t\t\t\tstate.maps = msg.value or {{}}
+\t\t\t\treturn state, {{ {{ to = "app:appearance", msg = "{args.appearance}" }} }}
+\t\t\tend
+''')
         (overlay / "main.luau").write_text(source)
         # Images resolve beside main.luau, which is now the overlay's.
         shutil.copytree(repo / "crates/moonmap-app/app/icons", overlay / "icons")

@@ -8,7 +8,7 @@ default:
 run *args: dev-bundle
     target/dev/Moonmap.app/Contents/MacOS/moonmap {{args}}
 
-# Opens on a sample library of public places around Cupertino.
+# Opens at Union Square on a sample library of public San Francisco places.
 demo: dev-bundle
     MOONMAP_DEMO=1 target/dev/Moonmap.app/Contents/MacOS/moonmap
 
@@ -44,6 +44,29 @@ screenshot output="target/screenshots/moonmap.png" view="home":
     fi
     cargo build --locked -p moonmap-app --features capture
     python3 scripts/capture.py {{quote(output)}} {{quote(view)}}
+
+# Retake the README's screenshots at the demo's position. Each runs twice:
+# the first run fills the tile cache. Needs ImageMagick.
+screenshots:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ioreg -n Root -d1 -a | grep -A1 CGSSessionScreenIsLocked | grep -q true; then
+        echo "The screen is locked: GPUI draws only its first frame." >&2
+        exit 1
+    fi
+    cargo build --locked -p moonmap-app --features capture
+    export MOONFRAME_CAPTURE_DELAY=9000
+    for pass in 1 2; do
+        for view in home place directions styles results look; do
+            python3 scripts/capture.py "docs/screenshots/$view.png" "$view" --appearance light
+        done
+        python3 scripts/capture.py docs/screenshots/dark.png place --appearance dark
+    done
+    magick mogrify -resize 1800x -colors 256 docs/screenshots/*.png
+
+# Render the app icon, which Moonframe finds in the app folder.
+icon:
+    rsvg-convert -w 1024 -h 1024 assets/icon.svg -o crates/moonmap-app/app/icon.png
 
 # Render the glyphs Moonframe's icon set lacks: blue for the sidebar,
 # ink for the map controls in light and dark appearances.

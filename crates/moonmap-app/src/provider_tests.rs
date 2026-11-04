@@ -155,6 +155,7 @@ fn guides_routes_styles_and_keys() -> Result<()> {
             ("zoom", Data::Number(12.0)),
         ]),
     );
+    maps.library.preferences.located = false;
     assert_eq!(maps.snapshot()["location_status"], "offline");
     assert_eq!(maps.snapshot()["located_before"], false);
     maps.answers.send(Answer::Location(Located::Fix {
@@ -180,5 +181,20 @@ fn guides_routes_styles_and_keys() -> Result<()> {
     maps.answers.send(Answer::Location(Located::Denied))?;
     maps.tick(&host);
     assert_eq!(maps.snapshot()["location_status"], "denied");
+    Ok(())
+}
+
+#[test]
+fn a_given_position_stands_in_for_the_location_service() -> Result<()> {
+    let (_dir, maps, host, _) = provider()?;
+    let mut maps = maps.with_location(Some(crate::demo::here()));
+    maps.find_user();
+    maps.tick(&host);
+    let snapshot = maps.snapshot();
+    assert_eq!(snapshot["location_status"], "located");
+    assert_eq!(
+        snapshot["location"]["lat"].as_f64(),
+        Some(crate::demo::here().lat)
+    );
     Ok(())
 }

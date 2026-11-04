@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Moonmap">
+<title>Moonmap</title>
+<!-- A map pin whose head holds Moonframe's striped moon. Render with `just icon`. -->
+<defs><clipPath id="tile"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".35"/></filter></defs>
+<rect x="100" y="100" width="824" height="824" rx="185" fill="#3b2417" filter="url(#shadow)"/>
+<g clip-path="url(#tile)"><circle cx="512" cy="512" r="304" fill="#2e6462"/>
+<ellipse cx="512" cy="744" rx="74" ry="18" fill="#1f4a48"/><path d="M378.8 532.9 A158 158 0 1 1 645.2 532.9 L512 742 Z" fill="#f6e7c8" stroke="#f6e7c8" stroke-width="16" stroke-linejoin="round"/><clipPath id="m1"><circle cx="512" cy="448" r="112"/></clipPath><g clip-path="url(#m1)"><rect x="400" y="336.0" width="224" height="100.8" fill="#f2b33d"/><rect x="400" y="436.8" width="224" height="50.4" fill="#e8642c"/><rect x="400" y="487.2" width="224" height="72.8" fill="#c63d26"/><rect x="400" y="431.2" width="224" height="10.1" fill="#f6e7c8"/><rect x="400" y="476.0" width="224" height="10.1" fill="#f6e7c8"/><rect x="400" y="517.4" width="224" height="10.1" fill="#f6e7c8"/></g>
+<circle cx="512" cy="512" r="304" fill="none" stroke="#f6e7c8" stroke-width="18"/></g></svg>

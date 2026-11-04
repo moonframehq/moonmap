@@ -32,6 +32,8 @@ Moonmap is a Moonframe app modeled on Apple Maps, with switchable tile providers
   attribution.
 - `just icons` renders `assets/icons/*.svg` into `app/icons` in four tones.
   Re-run it after editing a glyph.
+- `just icon` renders `assets/icon.svg` into `app/icon.png`, the app icon.
+  Keep it out of `assets/icons/`, which holds only glyphs.
 - Run `just format`, `just ci` and `just check` before committing.
 - A request from the sparkles dialog is checked with `just check`, not
   Moonframe's `just types` or `check-examples`. The Moonframe skills are in
