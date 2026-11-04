@@ -12,9 +12,13 @@ local OVERHANG = 72
 local loading = use "loading"
 local SIDEBAR = 284
 local MAX_ZOOM = 19
+-- How close a launch, a place or the user's position is shown. Maps.app opens
+-- at about 15.2, but tiles bake their labels in: here, just before Moonframe's
+-- next tile level, they stay near their full size.
+local CLOSE_ZOOM = 15.8
 
 -- What the view last drew, for `update` to zoom from and fit around.
-local seen = { lat = 37.788, lon = -122.4075, zoom = 15.3 }
+local seen = { lat = 37.788, lon = -122.4075, zoom = CLOSE_ZOOM }
 
 local function send(action, extra)
 	local msg = extra or {}
@@ -610,9 +614,9 @@ local function map_area(state, maps, app)
 	-- A launch opens where the user last was.
 	local start = if maps.located_before then maps.location else maps.center
 	local center = state.center or (if start then { start.lat, start.lon } else nil)
-	local zoom = state.zoom or maps.zoom
+	local zoom = state.zoom or CLOSE_ZOOM
 	if center then seen.lat, seen.lon = center[1], center[2] end
-	if zoom then seen.zoom = zoom end
+	seen.zoom = zoom
 	return ui.column { grow = true, class = "map-area",
 		ui.column { float = { top = 0, bottom = 0, left = -OVERHANG, right = -OVERHANG },
 			ui.map {
@@ -679,10 +683,10 @@ return mod {
 	update = function(state, msg)
 		local maps = state.maps or {}
 		if type(msg) == "string" then
-			if msg == "zoom_in" then state.center = { seen.lat, seen.lon }; state.zoom = math.min(MAX_ZOOM, math.floor(seen.zoom + 1))
-			elseif msg == "zoom_out" then state.center = { seen.lat, seen.lon }; state.zoom = math.max(2, math.ceil(seen.zoom - 1))
+			if msg == "zoom_in" then state.center = { seen.lat, seen.lon }; state.zoom = math.min(MAX_ZOOM, seen.zoom + 1)
+			elseif msg == "zoom_out" then state.center = { seen.lat, seen.lon }; state.zoom = math.max(2, seen.zoom - 1)
 			elseif msg == "locate" then
-				if maps.location then fly(state, maps.location.lat, maps.location.lon, math.max(seen.zoom, 15)) end
+				if maps.location then fly(state, maps.location.lat, maps.location.lon, math.max(seen.zoom, CLOSE_ZOOM)) end
 			elseif msg == "close_popup" then state.popup = nil
 			elseif msg == "close_look" then state.look = nil
 			elseif msg == "focus_search" then state.focus = not state.focus; state.view = "home"
@@ -703,12 +707,12 @@ return mod {
 			-- The first live fix: open on the user, as Maps does.
 			if state.maps.location_status == "located" and not state.found and state.maps.location then
 				state.found = true
-				fly(state, state.maps.location.lat, state.maps.location.lon, math.max(seen.zoom, 15))
+				fly(state, state.maps.location.lat, state.maps.location.lon, math.max(seen.zoom, CLOSE_ZOOM))
 			end
 			local after = state.maps.selected
 			-- A newly opened place: fly to it.
 			if after and (not before or before.id ~= after.id) then
-				fly(state, after.lat, after.lon, math.max(seen.zoom, 15))
+				fly(state, after.lat, after.lon, math.max(seen.zoom, CLOSE_ZOOM))
 				if state.directions ~= after.id then state.directions = nil; state.eta = nil end
 				if state.pending_directions == after.id then
 					state.pending_directions = nil
@@ -722,7 +726,7 @@ return mod {
 			if #results > 0 and state.framed ~= state.maps.query then
 				state.framed = state.maps.query
 				local frame = fit(results, 800, 700)
-				if frame then fly(state, frame.lat, frame.lon, math.min(frame.zoom, 15)) end
+				if frame then fly(state, frame.lat, frame.lon, math.min(frame.zoom, CLOSE_ZOOM)) end
 			end
 			return
 		end

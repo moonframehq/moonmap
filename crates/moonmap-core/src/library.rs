@@ -117,7 +117,7 @@ impl Default for Preferences {
             location: Coordinate::new(37.7880, -122.4075),
             located: false,
             center: Coordinate::new(37.7880, -122.4075),
-            zoom: 15.3,
+            zoom: 15.8,
             sidebar: true,
         }
     }

@@ -142,8 +142,10 @@ an ACP mode, or Node for `npx`.
 - A Mac locates itself by Wi-Fi, usually to within 20 to 60 m. Maps.app
   reads the same service, so it isn't more precise; it may only have had
   a fix longer.
-- The tiles are raster and `ui.map` draws them flat, so there is no 3D, and
-  the **compass** always points north.
+- The tiles are raster and `ui.map` draws them flat, so there is no 3D. Their
+  labels are part of the image, so they shrink between zoom levels.
+- The **compass** button is not connected yet: it always shows north, and
+  clicking it does not turn the map back.
 - **Look Around** shows 360° panoramas from Panoramax, or from Mapillary with
   a token set in Map Styles. Panoramax has little outside France, so without
   a token many places show the button disabled: it needs a panorama within

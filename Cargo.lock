@@ -4059,13 +4059,14 @@ dependencies = [
 [[package]]
 name = "moonframe"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
  "block2 0.6.2",
  "futures",
  "gpui-kit",
  "gpui-pre",
  "gpui-pre-platform",
+ "image",
  "imagesize 0.15.0",
  "moonframe-acp",
  "moonframe-core",
@@ -4078,6 +4079,7 @@ dependencies = [
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
  "objc2-user-notifications",
+ "raw-window-handle",
  "rust-embed",
  "serde",
  "serde_json",
@@ -4091,7 +4093,7 @@ dependencies = [
 [[package]]
 name = "moonframe-acp"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
  "agent-client-protocol-schema",
  "moonframe-core",
@@ -4104,7 +4106,7 @@ dependencies = [
 [[package]]
 name = "moonframe-core"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
  "mlua",
  "thiserror 2.0.21",
@@ -4114,7 +4116,7 @@ dependencies = [
 [[package]]
 name = "moonframe-history"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
  "tracing",
 ]
@@ -4122,7 +4124,7 @@ dependencies = [
 [[package]]
 name = "moonframe-packages"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
  "moonframe-core",
  "moonframe-providers",
@@ -4136,8 +4138,9 @@ dependencies = [
 [[package]]
 name = "moonframe-providers"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
+ "libc",
  "moonframe-core",
  "serde",
  "serde_json",
@@ -4149,7 +4152,7 @@ dependencies = [
 [[package]]
 name = "moonframe-store"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#a68b5acfa173de7d20a9138cb944344e68431041"
 dependencies = [
  "moonframe-core",
  "rusqlite",
