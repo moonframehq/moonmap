@@ -24,6 +24,25 @@ pub fn distance_meters(a: Coordinate, b: Coordinate) -> f64 {
     2.0 * EARTH_RADIUS_METERS * h.sqrt().asin()
 }
 
+/// The compass bearing from `a` to `b`, in degrees.
+pub fn bearing_degrees(a: Coordinate, b: Coordinate) -> f64 {
+    let (lat_a, lat_b) = (a.lat.to_radians(), b.lat.to_radians());
+    let d_lon = (b.lon - a.lon).to_radians();
+    let y = d_lon.sin() * lat_b.cos();
+    let x = lat_a.cos() * lat_b.sin() - lat_a.sin() * lat_b.cos() * d_lon.cos();
+    y.atan2(x).to_degrees().rem_euclid(360.0)
+}
+
+/// Where `meters` along `bearing` from `from` ends, on a short trip.
+pub fn destination(from: Coordinate, bearing: f64, meters: f64) -> Coordinate {
+    let (sin, cos) = bearing.to_radians().sin_cos();
+    let angle = meters / EARTH_RADIUS_METERS;
+    Coordinate::new(
+        from.lat + (angle * cos).to_degrees(),
+        from.lon + (angle * sin / from.lat.to_radians().cos().abs().max(0.01)).to_degrees(),
+    )
+}
+
 /// "18 min", "1 hr 3 min", as Maps writes travel times.
 pub fn duration_label(seconds: f64) -> String {
     let minutes = (seconds / 60.0).round().max(1.0) as u64;

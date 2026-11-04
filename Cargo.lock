@@ -4158,6 +4158,7 @@ dependencies = [
  "anyhow",
  "dispatch2",
  "fs2",
+ "image",
  "moonframe",
  "moonmap-core",
  "objc2 0.6.5",

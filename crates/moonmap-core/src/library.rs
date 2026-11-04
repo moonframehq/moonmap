@@ -98,9 +98,10 @@ pub struct Preferences {
     pub style: String,
     /// API keys by provider token.
     pub keys: BTreeMap<String, String>,
-    /// Where "my location" is. Moonmap has no location service; the user
-    /// sets it from the map.
+    /// Where the user last was, from the location service.
     pub location: Coordinate,
+    /// Whether `location` is a real fix, not the first run's default.
+    pub located: bool,
     /// Where the map last looked.
     pub center: Coordinate,
     pub zoom: f64,
@@ -114,6 +115,7 @@ impl Default for Preferences {
             style: crate::STYLES[0].id.into(),
             keys: BTreeMap::new(),
             location: Coordinate::new(37.7880, -122.4075),
+            located: false,
             center: Coordinate::new(37.7880, -122.4075),
             zoom: 15.3,
             sidebar: true,

@@ -9,6 +9,7 @@
 
 local TO = "provider:maps"
 local OVERHANG = 72
+local loading = use "loading"
 local SIDEBAR = 284
 local MAX_ZOOM = 19
 
@@ -231,8 +232,8 @@ end
 
 local function tool(child, msg, tip, options)
 	options = options or {}
-	return ui.row { width = 40, height = options.height or 40, shrink = false, align = "center", justify = "center", class = "map-tool",
-		state = if options.disabled then "disabled" elseif options.on then "on" else nil,
+	return ui.row { width = 40, height = options.height or 40, shrink = false, align = "center", justify = "center", class = if options.disabled then "map-tool map-off" else "map-tool",
+		state = if options.on and not options.disabled then "on" else nil,
 		msg = if options.disabled then nil else msg, to = options.to, tooltip = tip,
 		child,
 	}
@@ -269,6 +270,11 @@ local function style_picker(state, maps, app)
 	return ui.column { class = "styles", width = 340,
 		ui.text { "Map Styles", weight = "bold", size = "large" },
 		ui.column { gap = "small", table.unpack(cards) },
+		ui.column { gap = "small",
+			ui.text { "Look Around uses Panoramax. A Mapillary token adds far more streets.", size = "small", tone = "muted" },
+			ui.input { id = "key-mapillary", value = state.keys.mapillary or maps.street_token, placeholder = "Mapillary token · Enter", change = { msg = "key_draft", style = "mapillary" }, submit = { msg = "key_save", style = "mapillary" } },
+			ui.row { class = "side-link", msg = { open_url = "https://www.mapillary.com/dashboard/developers" }, self_align = "start", ui.text { "Get a token…", size = "small" } },
+		},
 		if current and current.needs_key then ui.column { gap = "small",
 			ui.text { current.title .. " needs an API key from its provider.", size = "small", tone = "muted" },
 			ui.input { id = "key-" .. current.id, value = state.keys[current.id] or maps.key, placeholder = "Paste API key · Enter", change = { msg = "key_draft", style = current.id }, submit = { msg = "key_save", style = current.id } },
@@ -311,9 +317,6 @@ local function controls(state, maps, app)
 			hairline(),
 			tool(ui.icon { name = "minus", size = "large", style = { color = ink } }, "zoom_out", "Zoom Out · ⌘−", { disabled = seen.zoom <= 2 }),
 		},
-		ui.row { width = 40, height = 40, align = "center", justify = "center", class = "map-round", tooltip = "3D needs vector tiles; raster map styles are flat",
-			ui.text { "3D", weight = "semibold", style = { color = ink, opacity = 0.45 } },
-		},
 		ui.column { width = 40, height = 40, align = "center", justify = "center", gap = "none", class = "map-round", tooltip = "North is up",
 			ui.text { "N", class = "map-compass-n", style = { color = ink } },
 			ui.row { width = 4, height = 4, style = { background = "#ff3b30", radius = 2 } },
@@ -341,30 +344,53 @@ end
 -- The place card's inner width, and its action buttons' fixed sizes: a
 -- popover anchor (the Guide button) does not share a row's free space, so
 -- every button gets an explicit width rather than `grow`.
-local CARD_WIDTH = 330
-local CARD_INNER = CARD_WIDTH - 2 * 14
+local SHEET_WIDTH = 360
+local HERO_HEIGHT = 200
+local SHEET_RIGHT = SHEET_WIDTH + 16
+local CARD_INNER = SHEET_WIDTH - 2 * 16
 local ACTION_GAP = 6
 local ACTION_HEIGHT = 50
 local function action_width(per_row)
 	return math.floor((CARD_INNER - (per_row - 1) * ACTION_GAP) / per_row)
 end
 
-local function action_button(icon, text, msg, to, on, primary, copy, per_row)
+local function action_button(icon, text, msg, to, on, primary, copy, per_row, disabled, tip)
 	return ui.column { width = action_width(per_row or 4), height = ACTION_HEIGHT, shrink = false, align = "center", justify = "center",
-		class = if primary then "place-primary" else "place-action", state = if on then "on" else nil, msg = msg, to = to, copy = copy,
+		class = if primary then "place-primary" elseif disabled then "place-action map-off" else "place-action", state = if on and not disabled then "on" else nil,
+		msg = if disabled then nil else msg, to = to, copy = copy, tooltip = tip,
 		glyph(icon, 15, if primary then "white" else "blue"),
 		ui.text { text, size = "small", weight = "medium", truncate = true },
 	}
+end
+
+local NO_LOOK = "No 360° imagery here. A Mapillary token in Map Styles adds more streets."
+
+-- Opens the panorama the provider found, if it found any.
+local function look_message(maps, place)
+	return if maps.look_around then { look_around = true, place = place } else nil
 end
 
 local function action_row(...)
 	return ui.row { style = { gap = ACTION_GAP }, ... }
 end
 
-local function place_card(state, maps, app)
-	local app_dark = app.dark
-	local place = maps.selected
-	if not place then return nil end
+-- One line of the sheet's Details section.
+local function detail(title, value, msg, copy)
+	return ui.column { gap = "none", shrink = false, class = if msg or copy then "sheet-detail sheet-link" else "sheet-detail", msg = msg, copy = copy,
+		ui.text { title, class = "side-sub" },
+		ui.text { value, class = if msg then "sheet-detail-link" else nil, lines = 2 },
+	}
+end
+
+local function sheet_stat(title, value)
+	return ui.column { grow = true, align = "center", gap = "none", shrink = false,
+		ui.text { title, class = "side-sub" },
+		ui.text { value, weight = "semibold", truncate = true },
+	}
+end
+
+-- The bar along the sheet's foot: the place's quiet actions.
+local function sheet_bar(state, maps, place)
 	local guide_items = {}
 	for _, guide in maps.guides or {} do
 		local inside = table.find(place.guides or {}, guide.id) ~= nil
@@ -373,47 +399,137 @@ local function place_card(state, maps, app)
 		})
 	end
 	table.insert(guide_items, ui.input { id = "card-guide", value = state.guide_name, placeholder = "New guide · Enter", change = "guide_name", submit = { msg = "guide_new_with", id = place.id } })
-	local directions = state.directions == place.id
-	local body = {
-		ui.row { align = "start", gap = "small",
-			ui.column { grow = true, gap = "none",
-				ui.text { place.name, class = "place-name", lines = 2 },
-				ui.text { (if place.subtitle ~= "" then place.subtitle .. " · " else "") .. place.distance .. " away", class = "side-sub", lines = 2 },
+	local function button(icon, tip, msg, to, on, copy)
+		return ui.row { width = 38, height = 34, align = "center", justify = "center", class = "sheet-tool", state = if on then "on" else nil, msg = msg, to = to, copy = copy, tooltip = tip,
+			ui.icon { name = icon },
+		}
+	end
+	return ui.row { float = { bottom = 12, left = 0, right = 0 }, justify = "center",
+		ui.row { class = "sheet-bar", align = "center",
+			ui.popover { open = state.popup == "guide", dismiss = "close_popup", side = "top", align = "start", width = 230,
+				content = ui.column { padding = "small", gap = "none", table.unpack(guide_items) },
+				button("plus", "Add to Guide", { popup = "guide" }, nil, #(place.guides or {}) > 0),
 			},
-			ui.row { class = "place-close", msg = "close_place", tooltip = "Close", ui.icon { name = "close", size = "small" } },
+			button(if place.saved then "star-fill" else "star", if place.saved then "Saved" else "Save", send("save", { id = place.id }).msg, TO, place.saved),
+			button(if place.pinned then "pin-off" else "pin", if place.pinned then "Unpin" else "Pin", send("pin", { id = place.id }).msg, TO, place.pinned),
+			button("copy", "Copy Coordinates", nil, nil, false, string.format("%.6f, %.6f", place.lat, place.lon)),
 		},
 	}
-	if directions then
-		local modes = {}
-		for _, mode in { "car", "walk", "bike" } do
-			table.insert(modes, ui.row { grow = true, justify = "center", class = "place-mode", selected = state.mode == mode, msg = { mode = mode }, tooltip = ({ car = "Drive", walk = "Walk", bike = "Cycle" })[mode], glyph(MODE_ICON[mode], 16, if state.mode == mode then "blue" else app_dark) })
-		end
-		table.insert(body, ui.row { class = "place-modes", table.unpack(modes) })
-		table.insert(body, ui.row { align = "end", gap = "small",
+end
+
+local function sheet_directions(state, place)
+	local modes = {}
+	for _, mode in { "car", "walk", "bike" } do
+		table.insert(modes, ui.row { grow = true, justify = "center", class = "place-mode", selected = state.mode == mode, msg = { mode = mode }, tooltip = ({ car = "Drive", walk = "Walk", bike = "Cycle" })[mode], glyph(MODE_ICON[mode], 15, "blue") })
+	end
+	return {
+		ui.row { class = "place-modes", table.unpack(modes) },
+		ui.row { align = "end", gap = "small",
 			ui.text { if state.eta then state.eta.time else "Finding a route…", class = "place-eta" },
 			if state.eta then ui.text { state.eta.distance, class = "side-sub" } else nil,
-		})
-		table.insert(body, action_row(
+		},
+		action_row(
 			action_button("bookmark", "Save Route", send("route_save", { id = place.id, mode = state.mode }).msg, TO, false, false, nil, 2),
 			action_button("close", "End", "end_directions", nil, false, false, nil, 2)
-		))
+		),
+	}
+end
+
+-- What Maps' place sheet shows, from open data: nothing here gives ratings
+-- or offers, so a section with nothing to say is left out.
+local function place_sheet(state, maps, app)
+	local place = maps.selected
+	if not place then return nil end
+	local info = place.details or {}
+	local photos = info.photos or {}
+	local line = {}
+	if info.kind and info.kind ~= "" then table.insert(line, info.kind) end
+	table.insert(line, if info.area and info.area ~= "" then info.area else place.subtitle)
+	-- The same height from the first frame, so nothing below it moves.
+	local hero
+	if #photos > 0 then
+		hero = ui.image { src = photos[1], width = SHEET_WIDTH, height = HERO_HEIGHT, fit = "cover" }
+	elseif place.gathering then
+		hero = ui.icon { name = "loader-circle", spin = true, class = "sheet-wait" }
 	else
-		table.insert(body, action_row(
-			action_button("png:car", "Directions", { directions = place.id }, nil, false, true),
-			action_button(if place.pinned then "pin-off" else "pin", if place.pinned then "Unpin" else "Pin", send("pin", { id = place.id }).msg, TO, place.pinned),
-			action_button(if place.saved then "star-fill" else "star", if place.saved then "Saved" else "Save", send("save", { id = place.id }).msg, TO, place.saved),
-			ui.popover { open = state.popup == "guide", dismiss = "close_popup", side = "bottom", align = "end", width = 230,
-				content = ui.column { padding = "small", gap = "none", table.unpack(guide_items) },
-				action_button("book-open", "Guide", { popup = "guide" }, nil, #(place.guides or {}) > 0),
-			}
-		))
-		table.insert(body, action_row(
-			action_button("eye", "Look Around", { look_around = true, lat = place.lat, lon = place.lon }, nil, false, false, nil, 3),
-			action_button("copy", "Copy", nil, nil, false, false, string.format("%.6f, %.6f", place.lat, place.lon), 3),
-			action_button("external-link", "OpenStreetMap", { open_url = string.format("https://www.openstreetmap.org/?mlat=%.5f&mlon=%.5f#map=17/%.5f/%.5f", place.lat, place.lon, place.lat, place.lon) }, nil, false, false, nil, 3)
-		))
+		hero = ui.icon { name = place.icon or "pin", size = "title", style = { color = "#ffffff" } }
 	end
-	return ui.column { float = { top = 12, left = 12 }, width = CARD_WIDTH, class = "place", table.unpack(body) }
+	local body = {
+		ui.row { height = HERO_HEIGHT, width = SHEET_WIDTH, shrink = false, align = "center", justify = "center",
+			class = "sheet-hero", style = if #photos > 0 or place.gathering then nil else { background = place.color or "#8e8e93" },
+			hero,
+		},
+	}
+	local content = {
+		ui.column { gap = "none", align = "center", shrink = false,
+			ui.text { place.name, class = "place-name", lines = 2 },
+			ui.text { table.concat(line, " · "), class = "side-sub", lines = 2 },
+		},
+	}
+	if state.directions == place.id then
+		for _, item in sheet_directions(state, place) do table.insert(content, item) end
+	else
+		local actions = { { "png:car", place.drive_time or "Directions", { directions = place.id }, true } }
+		-- Held open while they may still come, so the row keeps its shape.
+		local phone, website = info.phone and info.phone ~= "", info.website and info.website ~= ""
+		if phone or place.gathering then table.insert(actions, { "png:phone", "Call", if phone then { open_url = "tel:" .. string.gsub(info.phone, "%s", "") } else nil, false, not phone }) end
+		if website or place.gathering then table.insert(actions, { "globe", "Website", if website then { open_url = info.website } else nil, false, not website }) end
+		table.insert(actions, { "eye", "Look Around", look_message(maps, place.id), false, maps.look_around == nil, NO_LOOK })
+		local buttons = {}
+		for _, action in actions do
+			table.insert(buttons, action_button(action[1], action[2], action[3], nil, false, action[4], nil, #actions, action[5], if action[5] then action[6] else nil))
+		end
+		table.insert(content, action_row(table.unpack(buttons)))
+		table.insert(content, ui.row { class = "sheet-stats", shrink = false,
+			sheet_stat("Distance", place.distance),
+			if info.kind and info.kind ~= "" then sheet_stat("Type", info.kind) elseif place.gathering then sheet_stat("Type", "–") else nil,
+		})
+		-- Boxes hold the strip open for the pictures still on their way.
+		if #photos > 1 or place.gathering then
+			local strip = {}
+			for index = 2, #photos do
+				table.insert(strip, ui.row { width = 150, height = 110, shrink = false, class = "sheet-photo",
+					ui.image { src = photos[index], width = 150, height = 110, fit = "cover", class = "sheet-photo" },
+				})
+			end
+			if place.gathering then
+				for _ = #strip + 1, 3 do
+					table.insert(strip, ui.row { width = 150, height = 110, shrink = false, class = "sheet-photo" })
+				end
+			end
+			table.insert(content, ui.row { scroll = "x", shrink = false, class = "sheet-photos", table.unpack(strip) })
+		end
+		if place.gathering and (info.about or "") == "" then
+			table.insert(content, ui.column { gap = "small", shrink = false,
+				ui.text { "About", class = "sheet-heading" },
+				loading { skeleton = true, count = 4 },
+			})
+		elseif info.about and info.about ~= "" then
+			table.insert(content, ui.column { gap = "small", shrink = false,
+				ui.text { "About", class = "sheet-heading" },
+				ui.text { info.about },
+				if info.source ~= "" then ui.row { class = "side-link sheet-source", msg = { open_url = info.source }, self_align = "start", ui.text { "From Wikipedia, CC BY-SA", size = "small" } } else nil,
+			})
+		end
+		local rows = {}
+		if info.hours and #info.hours > 0 then table.insert(rows, detail("Hours", table.concat(info.hours, "\n"))) end
+		if info.phone and info.phone ~= "" then table.insert(rows, detail("Phone", info.phone, { open_url = "tel:" .. string.gsub(info.phone, "%s", "") })) end
+		if info.website and info.website ~= "" then table.insert(rows, detail("Website", info.website, { open_url = info.website })) end
+		if place.subtitle ~= "" then table.insert(rows, detail("Address", place.subtitle)) end
+		table.insert(rows, detail("Coordinates", string.format("%.5f, %.5f", place.lat, place.lon), nil, string.format("%.6f, %.6f", place.lat, place.lon)))
+		table.insert(content, ui.column { gap = "small", shrink = false,
+			ui.text { "Details", class = "sheet-heading" },
+			ui.column { class = "sheet-details", shrink = false, table.unpack(rows) },
+		})
+		-- Room for the bar at the foot.
+		table.insert(content, ui.row { height = 48, shrink = false })
+	end
+	table.insert(body, ui.column { class = "sheet-body", shrink = false, table.unpack(content) })
+	return ui.column { float = { top = 8, bottom = 8, left = 8 }, width = SHEET_WIDTH, class = "sheet",
+		ui.column { grow = true, scroll = true, gap = "none", table.unpack(body) },
+		ui.row { float = { top = 10, right = 10 }, width = 28, height = 28, align = "center", justify = "center", class = "sheet-close", msg = "close_place", tooltip = "Close", ui.icon { name = "close", size = "small" } },
+		if state.directions ~= place.id then sheet_bar(state, maps, place) else nil,
+	}
 end
 
 ------------------------------------------------------------------------
@@ -461,20 +577,39 @@ local function location_notice(maps)
 		elseif maps.location_status == "approximate" then "Precise Location is off: your position is approximate. Turn it on in System Settings › Privacy & Security › Location Services."
 		else nil
 	if not text then return nil end
-	return ui.row { float = { bottom = 12, left = 64 }, max_width = 520, class = "map-banner", align = "center",
+	return ui.row { float = { bottom = 12, left = (if maps.selected then SHEET_RIGHT else 12) + 52 }, max_width = 520, class = "map-banner", align = "center",
 		ui.icon { name = "triangle-alert", tone = "warning" },
 		ui.text { text, size = "small" },
 	}
 end
 
+-- A 360° panorama over the map: `street-view` draws it and takes the drags.
+local function look_around(state, maps)
+	return ui.column { float = { top = 0, bottom = 0, left = 0, right = 0 }, gap = "none", class = "map-look",
+		ui.row { height = 52, shrink = false, align = "center", drag = true, class = "map-look-bar",
+			style = { padding = { 0, 14, 0, if maps.sidebar == false then 84 else 14 } },
+			ui.text { "Look Around", weight = "semibold" },
+			ui.spacer(),
+			ui.row { class = "place-close", msg = "close_look", tooltip = "Close Look Around", ui.icon { name = "close", size = "small" } },
+		},
+		ui.column { grow = true, ui.view { name = "street-view", id = "street", props = state.look } },
+	}
+end
+
 local function map_area(state, maps, app)
+	-- No center yet: the map would open on 0, 0 and then jump.
+	if not maps.ready then
+		return ui.column { grow = true, class = "map-loading", loading { block = true, text = "Finding your location…" } }
+	end
 	local style = maps.style or "esri-streets"
 	local key = maps.key or ""
 	local keyless = false
 	for _, entry in maps.styles or {} do
 		if entry.id == style and entry.needs_key and key == "" then keyless = true end
 	end
-	local center = state.center or (if maps.center then { maps.center.lat, maps.center.lon } else nil)
+	-- A launch opens where the user last was.
+	local start = if maps.located_before then maps.location else maps.center
+	local center = state.center or (if start then { start.lat, start.lon } else nil)
 	local zoom = state.zoom or maps.zoom
 	if center then seen.lat, seen.lon = center[1], center[2] end
 	if zoom then seen.zoom = zoom end
@@ -485,6 +620,7 @@ local function map_area(state, maps, app)
 				provider = if keyless then "esri-streets" else style :: any,
 				key = if key ~= "" then key else nil,
 				center = center,
+				glide = true,
 				zoom = zoom,
 				pins = pins(state, maps),
 				routes = routes(state, maps),
@@ -492,22 +628,26 @@ local function map_area(state, maps, app)
 				routed = { msg = "routed" },
 			},
 		},
-		place_card(state, maps, app),
+		-- Under the sheet, so what it takes never reaches the map.
+		if maps.selected then ui.column { float = { top = 8, bottom = 8, left = 8 }, width = SHEET_WIDTH, ui.view { name = "shield", id = "sheet" } } else nil,
+		place_sheet(state, maps, app),
 		if maps.sidebar == false then ui.row { float = { top = 10, left = 84 }, class = "map-card", gap = "none",
 			tool(ui.icon { name = "panel-left", size = "large" }, send("sidebar", { open = true }).msg, "Show Sidebar · ⌃⌘S", { to = TO }),
 		} else nil,
-		if keyless then ui.row { float = { top = 12, left = if maps.selected then 356 else 12 }, class = "map-banner", align = "center",
+		if keyless then ui.row { float = { top = 12, left = if maps.selected then SHEET_RIGHT else 12 }, class = "map-banner", align = "center",
 			ui.icon { name = "key-round", tone = "warning" },
 			ui.text { "This style needs an API key; showing Explore until one is set.", size = "small" },
 		} else nil,
 		location_notice(maps),
 		controls(state, maps, app),
-		ui.row { float = { bottom = 12, left = 12 }, width = 40, height = 40, align = "center", justify = "center", class = "map-round map-tool",
-			msg = { look_around = true }, tooltip = "Look Around (opens street-level imagery on Mapillary)",
+		ui.row { float = { bottom = 12, left = if maps.selected then SHEET_RIGHT else 12 }, width = 40, height = 40, align = "center", justify = "center", class = if maps.look_around then "map-round map-tool" else "map-round map-tool map-off",
+			msg = look_message(maps, maps.selected and maps.selected.id), tooltip = if maps.look_around then "Look Around" else NO_LOOK,
 			png("binoculars", 20, app.dark),
 		},
 		weather(maps),
 		ui.row { float = "bottom-right", class = "map-credit", ui.text { maps.attribution or "", size = "small" } },
+		-- Choosing another place returns to the map.
+		if state.look and state.look.place == (maps.selected and maps.selected.id) then look_around(state, maps) else nil,
 	}
 end
 
@@ -544,6 +684,7 @@ return mod {
 			elseif msg == "locate" then
 				if maps.location then fly(state, maps.location.lat, maps.location.lon, math.max(seen.zoom, 15)) end
 			elseif msg == "close_popup" then state.popup = nil
+			elseif msg == "close_look" then state.look = nil
 			elseif msg == "focus_search" then state.focus = not state.focus; state.view = "home"
 			elseif msg == "clear_search" then state.query = ""; return state, { send("clear_search") }
 			elseif msg == "close_place" then state.directions = nil; state.eta = nil; return state, { send("close") }
@@ -643,8 +784,14 @@ return mod {
 		elseif msg.mode then state.mode = msg.mode; state.eta = nil
 		elseif msg.open_url then return state, { { to = "app:open", msg = msg.open_url } }
 		elseif msg.look_around then
-			local lat, lon = msg.lat or seen.lat, msg.lon or seen.lon
-			return state, { { to = "app:open", msg = string.format("https://www.mapillary.com/app/?lat=%.6f&lng=%.6f&z=17", lat, lon) } }
+			local shot, chosen = maps.look_around, maps.selected
+			if shot then
+				state.look = table.clone(shot)
+				state.look.place = msg.place
+				state.look.token = maps.street_token
+				state.look.toward_lat = chosen and chosen.lat
+				state.look.toward_lon = chosen and chosen.lon
+			end
 		end
 	end,
 	view = function(state, app)

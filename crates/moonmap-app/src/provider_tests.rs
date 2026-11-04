@@ -156,6 +156,7 @@ fn guides_routes_styles_and_keys() -> Result<()> {
         ]),
     );
     assert_eq!(maps.snapshot()["location_status"], "offline");
+    assert_eq!(maps.snapshot()["located_before"], false);
     maps.answers.send(Answer::Location(Located::Fix {
         lat: 40.0,
         lon: -74.0,
@@ -171,6 +172,9 @@ fn guides_routes_styles_and_keys() -> Result<()> {
         ),
         (Some(40.0), Some(5.0))
     );
+    // The next launch opens here, without waiting for the service.
+    assert_eq!(snapshot["located_before"], true);
+    assert_eq!(snapshot["ready"], true);
     // Fixes keep coming on an approximate grant; they still count.
     assert_eq!(snapshot["location_status"], "located");
     maps.answers.send(Answer::Location(Located::Denied))?;

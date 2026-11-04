@@ -18,6 +18,9 @@ Moonmap is a Moonframe app modeled on Apple Maps, with switchable tile providers
 - `src/location.rs` is the only unsafe code: CoreLocation calls, made on
   the main thread (whose run loop CoreLocation needs). It is never started
   outside an `.app`, where CoreLocation throws.
+- `src/street_view.rs` draws Look Around itself, so that it is the same on
+  macOS and Linux: `ui.browser` does not embed on Linux, and MapKit is macOS
+  only.
 
 ## Rules
 

@@ -9,10 +9,12 @@ import argparse
 import os
 from pathlib import Path
 import shutil
+import json
 import subprocess
+import urllib.request
 import tempfile
 
-VIEWS = ("home", "place", "directions", "styles", "results", "dark", "hidden")
+VIEWS = ("home", "place", "directions", "styles", "results", "dark", "hidden", "look", "loading")
 
 
 def patch(source, old, new):
@@ -39,7 +41,7 @@ def main():
         overlay.mkdir()
         source = (repo / "crates/moonmap-app/app/main.luau").read_text()
         hook = "\t\tif msg.topic == \"provider/maps\" then\n"
-        if args.view in ("place", "directions"):
+        if args.view in ("place", "directions", "loading"):
             source = patch(source, hook, hook + f'''\t\t\tif not state.captured and msg.value and msg.value.saved then
 \t\t\t\tstate.captured = true
 \t\t\t\tstate.pending_directions = {'"demo:apple-park"' if args.view == "directions" else "nil"}
@@ -66,6 +68,19 @@ def main():
 \t\t\t\treturn state, { send("sidebar", { open = false }) }
 \t\t\tend
 ''')
+        if args.view == "loading":
+            # The sheet's first frame, before anything has arrived.
+            source = patch(source, "local info = place.details or {}", "local info = {}; place.gathering = true")
+        if args.view == "look":
+            # A real panorama, so the viewer is captured with an image.
+            found = json.load(urllib.request.urlopen(urllib.request.Request(
+                "https://api.panoramax.xyz/api/search?place_position=2.3376,48.8606&place_distance=0-150&limit=30",
+                headers={"User-Agent": "Moonmap capture"}), timeout=30))
+            shot = next(f for f in found["features"] if f["properties"]["pers:interior_orientation"].get("field_of_view") == 360)
+            lon, lat = shot["geometry"]["coordinates"]
+            look = (f'{{ id = "{shot["id"]}", lat = {lat}, lon = {lon}, heading = {shot["properties"]["view:azimuth"]}, '
+                    f'url = "{shot["assets"]["sd"]["href"]}", hd = "{shot["assets"]["sd"]["href"]}", credit = "Panoramax contributors" }}')
+            source = patch(source, 'popup = nil, focus = false,', f'popup = nil, focus = false, look = {look},')
         if args.view == "styles":
             source = patch(source, 'popup = nil, focus = false,', 'popup = "styles", focus = false,')
         (overlay / "main.luau").write_text(source)

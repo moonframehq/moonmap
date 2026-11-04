@@ -36,6 +36,13 @@ just ci
   plain text.
 - **Weather**: Open-Meteo temperature and US AQI at the map's center.
 
+## Place sheet
+
+Opening a place shows a full-height sheet. Its website, phone, hours, kind and
+area come from OpenStreetMap, and its description and photos from Wikipedia,
+when the place has a page. No open source gives ratings or booking offers, so
+the sheet has neither. Sections with nothing to show are left out.
+
 ## Make it yours
 
 The sparkles under the map controls open a dialog: say what should change,
@@ -65,9 +72,12 @@ option lands upstream.
 - A Mac locates itself by Wi-Fi, usually to within 20 to 60 m. Maps.app
   reads the same service, so it isn't more precise; it may only have had
   a fix longer.
-- The tiles are raster, so **3D** and the **compass** can't rotate or tilt
-  anything. They are shown for parity and explain this in a tooltip.
-- **Look Around** opens Mapillary's street-level imagery in your browser.
+- The tiles are raster and `ui.map` draws them flat, so there is no 3D, and
+  the **compass** always points north.
+- **Look Around** shows 360° panoramas from Panoramax, or from Mapillary with
+  a token set in Map Styles. Panoramax has little outside France, so without
+  a token many places show the button disabled: it needs a panorama within
+  150 m.
 - CARTO's basemaps now return an "API key required" tile to every keyless
   request. Moonframe's `carto-*` providers have no key slot, so Moonmap
   leaves them out until Moonframe adds one.

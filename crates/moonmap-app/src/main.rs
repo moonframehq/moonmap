@@ -2,6 +2,8 @@ mod demo;
 mod location;
 mod net;
 mod provider;
+mod shield;
+mod street_view;
 
 use {
     anyhow::{Context, Result},
@@ -25,6 +27,16 @@ fn root(demo: bool) -> Result<PathBuf> {
     Ok(home
         .join("Library/Application Support")
         .join(if demo { "moonmap-demo" } else { "moonmap" }))
+}
+
+/// The folder `ui.image` may show files from, as Moonframe works it out.
+fn images(demo: bool) -> PathBuf {
+    let name = if demo { "moonmap-demo" } else { "moonmap" };
+    let cache = std::env::var_os("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+        .unwrap_or_else(std::env::temp_dir);
+    cache.join(name).join("images")
 }
 
 fn run() -> Result<ExitCode> {
@@ -62,10 +74,15 @@ fn run() -> Result<ExitCode> {
     if cfg!(debug_assertions) {
         app = app.app_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/app"));
     }
+    let images = images(demo);
     // Offline checks never reach the web services.
     let online = !check;
     Ok(app
-        .native("maps", move || provider::Maps::new(library.clone(), online))
+        .native("maps", move || {
+            provider::Maps::new(library.clone(), online).with_images(images.clone())
+        })
+        .view("street-view", street_view::StreetView::new)
+        .view("shield", shield::Shield::new)
         .run())
 }
 

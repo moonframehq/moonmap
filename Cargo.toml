@@ -13,6 +13,7 @@ version      = "0.1.0"
 anyhow              = "1"
 dispatch2           = "0.3"
 fs2                 = "0.4"
+image               = { default-features = false, features = ["jpeg"], version = "0.25" }
 moonframe           = { branch = "main", default-features = false, features = ["acp", "map", "studio"], git = "https://github.com/moonframehq/moonframe" }
 moonmap-core        = { path = "crates/moonmap-core" }
 objc2               = "0.6"

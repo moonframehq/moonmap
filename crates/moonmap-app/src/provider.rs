@@ -11,12 +11,12 @@ use {
     anyhow::{Context, Result},
     moonframe::{Data, Handle, Native},
     moonmap_core::{
-        Coordinate, Drive, Library, Place, Recent, STYLES, Weather, distance_label,
+        Coordinate, Details, Drive, Library, Place, Recent, STYLES, Shot, Weather, distance_label,
         distance_meters, duration_label,
     },
     serde_json::{Value, json},
     std::{
-        collections::HashMap,
+        collections::{HashMap, HashSet},
         path::PathBuf,
         sync::mpsc::{self, Receiver, Sender},
         time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -30,6 +30,14 @@ const WEATHER_AGE: Duration = Duration::from_secs(15 * 60);
 const WEATHER_MOVE_METERS: f64 = 5_000.0;
 /// Drive times are asked again once My Location moves this far.
 const DRIVES_MOVE_METERS: f64 = 200.0;
+/// A move of the map shorter than this keeps the Look Around answer.
+const LOOK_MOVE_METERS: f64 = 25.0;
+/// How far from the place Look Around may start.
+const LOOK_RADIUS_METERS: f64 = 150.0;
+/// The Mapillary token's name among the keys.
+const STREET_KEY: &str = "mapillary";
+/// How long a first launch waits for a location before showing the map.
+const LOCATION_WAIT: Duration = Duration::from_secs(10);
 /// Changes are written this long after the last one.
 const SAVE_AFTER: Duration = Duration::from_millis(800);
 
@@ -44,6 +52,18 @@ pub struct Maps {
     searching: bool,
     results: Vec<Place>,
     selected: Option<Place>,
+    /// The spot last asked about for Look Around, and its panorama once known.
+    look_asked: Option<Coordinate>,
+    look_shot: Option<Shot>,
+    /// What the sheet shows, by place id, once it has been gathered.
+    details: HashMap<String, Details>,
+    /// Those still being gathered.
+    gathering: HashSet<String>,
+    /// Where pictures go for `ui.image`.
+    images: PathBuf,
+    /// When the provider started, to stop waiting for a first location.
+    started: Instant,
+    gave_up: bool,
     drives: HashMap<String, Result<Drive, String>>,
     drives_from: Option<Coordinate>,
     weather: Option<Weather>,
@@ -70,6 +90,12 @@ fn shown(place: &Place) -> Value {
 }
 
 impl Maps {
+    /// Pictures go in `images`, the folder `ui.image` may show.
+    pub fn with_images(mut self, images: PathBuf) -> Self {
+        self.images = images;
+        self
+    }
+
     pub fn new(path: PathBuf, online: bool) -> Self {
         let (answers, inbox) = mpsc::channel();
         Self {
@@ -83,6 +109,13 @@ impl Maps {
             searching: false,
             results: Vec::new(),
             selected: None,
+            look_asked: None,
+            look_shot: None,
+            details: HashMap::new(),
+            gathering: HashSet::new(),
+            images: std::env::temp_dir().join("moonmap-images"),
+            started: Instant::now(),
+            gave_up: false,
             drives: HashMap::new(),
             drives_from: None,
             weather: None,
@@ -91,6 +124,37 @@ impl Maps {
             dirty: None,
             error: String::new(),
         }
+    }
+
+    /// Starts finding what the sheet shows about `place`: once each.
+    fn gather(&mut self, place: &Place) {
+        if !self.online {
+            return;
+        }
+        if !self.details.contains_key(&place.id) {
+            self.details.insert(place.id.clone(), Details::default());
+            self.gathering.insert(place.id.clone());
+            net::details(&self.answers, place.clone(), self.images.clone());
+        }
+        if !self.drives.contains_key(&place.id) {
+            self.drives.insert(place.id.clone(), Err(String::new()));
+            net::drive(&self.answers, self.library.preferences.location, place);
+        }
+    }
+
+    fn street_token(&self) -> &str {
+        self.library
+            .preferences
+            .keys
+            .get(STREET_KEY)
+            .map_or("", String::as_str)
+    }
+
+    /// Whether the map can open: it knows where, or has stopped waiting to.
+    fn ready(&self) -> bool {
+        // Without a location service there is nothing to wait for.
+        let waits = cfg!(target_os = "macos") && self.online;
+        !waits || self.library.preferences.located || self.located.is_some() || self.gave_up
     }
 
     fn changed(&mut self) {
@@ -170,6 +234,7 @@ impl Maps {
                     at: now(),
                 });
                 self.library.visit(place.clone(), now());
+                self.gather(&place);
                 self.selected = Some(place);
                 self.changed();
             },
@@ -248,6 +313,10 @@ impl Maps {
             },
             "key" => {
                 let (style, key) = (text("style"), text("key").trim().to_owned());
+                if style == STREET_KEY {
+                    // Another token may find what the last one could not.
+                    self.look_asked = None;
+                }
                 if key.is_empty() {
                     self.library.preferences.keys.remove(&style);
                 } else {
@@ -318,7 +387,18 @@ impl Maps {
             self.drives.insert(place.id.clone(), Err(String::new()));
             net::drive(&self.answers, location, &place);
         }
+        // What Look Around would open: the place, else the map's middle.
         let center = self.library.preferences.center;
+        let look = self.selected.as_ref().map_or(center, Place::coordinate);
+        if self
+            .look_asked
+            .is_none_or(|asked| distance_meters(asked, look) > LOOK_MOVE_METERS)
+        {
+            self.look_asked = Some(look);
+            self.look_shot = None;
+            let token = self.street_token().to_owned();
+            net::street(&self.answers, look, LOOK_RADIUS_METERS, token);
+        }
         let stale = self.weather_at.is_none_or(|(at, when)| {
             when.elapsed() > WEATHER_AGE || distance_meters(at, center) > WEATHER_MOVE_METERS
         });
@@ -348,6 +428,7 @@ impl Maps {
                     if let Located::Fix { lat, lon, .. } = located {
                         // Kept, so the next launch starts where the user was.
                         self.library.preferences.location = Coordinate::new(lat, lon);
+                        self.library.preferences.located = true;
                         self.changed();
                     }
                     // An approximate grant still delivers fixes; keep them.
@@ -355,6 +436,23 @@ impl Maps {
                         && matches!(self.located, Some(Located::Fix { .. })))
                     {
                         self.located = Some(located);
+                    }
+                },
+                Answer::Details {
+                    place,
+                    details,
+                    done,
+                } => {
+                    if done {
+                        self.gathering.remove(&place);
+                    }
+                    self.details.insert(place, details);
+                    changed = true;
+                },
+                Answer::Street { asked, shot } => {
+                    if self.look_asked == Some(asked) {
+                        self.look_shot = shot;
+                        changed = true;
                     }
                 },
                 Answer::Weather { at, weather } => match weather {
@@ -415,6 +513,11 @@ impl Maps {
             value["pinned"] = library.is_pinned(&place.id).into();
             value["saved"] = library.is_saved(&place.id).into();
             value["distance"] = distance_label(meters).into();
+            value["details"] = json!(self.details.get(&place.id));
+            value["gathering"] = self.gathering.contains(&place.id).into();
+            if let Some(Ok(drive)) = self.drives.get(&place.id) {
+                value["drive_time"] = duration_label(drive.seconds).into();
+            }
             value["guides"] = library
                 .guides
                 .iter()
@@ -470,6 +573,10 @@ impl Maps {
             "searching": self.searching,
             "results": self.results.iter().map(shown).collect::<Vec<_>>(),
             "selected": selected,
+            "look_around": self.look_shot,
+            "street_token": self.street_token(),
+            "ready": self.ready(),
+            "located_before": preferences.located,
             "weather": self.weather,
             "online": self.online,
             "error": self.error,
@@ -510,6 +617,10 @@ impl Native for Maps {
 
     fn tick(&mut self, host: &Handle) {
         let mut changed = self.receive_answers();
+        if !self.gave_up && self.started.elapsed() > LOCATION_WAIT {
+            self.gave_up = true;
+            changed = true;
+        }
         if self.dirty.is_some_and(|when| when.elapsed() > SAVE_AFTER) {
             self.save();
             changed = true;
