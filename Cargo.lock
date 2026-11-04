@@ -4059,6 +4059,7 @@ dependencies = [
 [[package]]
 name = "moonframe"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "block2 0.6.2",
  "futures",
@@ -4090,6 +4091,7 @@ dependencies = [
 [[package]]
 name = "moonframe-acp"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "agent-client-protocol-schema",
  "moonframe-core",
@@ -4102,6 +4104,7 @@ dependencies = [
 [[package]]
 name = "moonframe-core"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "mlua",
  "thiserror 2.0.21",
@@ -4111,6 +4114,7 @@ dependencies = [
 [[package]]
 name = "moonframe-history"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "tracing",
 ]
@@ -4118,6 +4122,7 @@ dependencies = [
 [[package]]
 name = "moonframe-packages"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "moonframe-core",
  "moonframe-providers",
@@ -4131,6 +4136,7 @@ dependencies = [
 [[package]]
 name = "moonframe-providers"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "moonframe-core",
  "serde",
@@ -4143,6 +4149,7 @@ dependencies = [
 [[package]]
 name = "moonframe-store"
 version = "0.1.0"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9c05b3cd83ff8ac7dccc548220f98e6cb2c5f635"
 dependencies = [
  "moonframe-core",
  "rusqlite",

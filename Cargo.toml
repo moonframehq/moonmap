@@ -39,8 +39,3 @@ lto = "thin"
 
 [profile.dev.package."*"]
 opt-level = 2
-
-# The `pulse` pin option (a breathing halo on My Location) lives on a local
-# Moonframe branch until it lands upstream; drop this patch once it has.
-[patch."https://github.com/moonframehq/moonframe"]
-moonframe = { path = "../moonframe-map-pulse/crates/moonframe" }

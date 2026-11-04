@@ -51,13 +51,6 @@ changes the app's files. It asks before each change, and the window reloads
 with the result. Replies go under **Feedback & fixes**. It needs an agent with
 an ACP mode, or Node for `npx`.
 
-## Moonframe patch
-
-The breathing halo is `ui.map`'s new `pulse` pin option, on the local
-Moonframe branch `map-pin-pulse` in `../moonframe-map-pulse`. The root
-`Cargo.toml` patches Moonframe to that path; drop the patch once the
-option lands upstream.
-
 ## Limitations
 
 - Sparkles in a packaged app: outside a repository the agent works in
