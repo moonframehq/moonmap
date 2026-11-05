@@ -12,11 +12,13 @@ pub enum Located {
     /// A fix, and how far off it may be, in meters.
     Fix { lat: f64, lon: f64, meters: f64 },
     /// The user, or a policy, said no.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Denied,
     /// Granted, but only approximately (Precise Location is off).
     Approximate,
     /// Not running from an app bundle: macOS gives no location to a bare
     /// executable (CoreLocation throws), so it is never asked.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Unbundled,
 }
 
