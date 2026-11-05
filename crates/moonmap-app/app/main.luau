@@ -452,7 +452,7 @@ local function place_sheet(state, maps, app)
 	-- The same height from the first frame, so nothing below it moves.
 	local hero
 	if #photos > 0 then
-		hero = ui.image { src = photos[1], width = SHEET_WIDTH, height = HERO_HEIGHT, fit = "cover" }
+		hero = ui.image { src = photos[1], width = SHEET_WIDTH, height = HERO_HEIGHT, fit = "cover", class = "sheet-hero" }
 	elseif place.gathering then
 		hero = ui.icon { name = "loader-circle", spin = true, class = "sheet-wait" }
 	else

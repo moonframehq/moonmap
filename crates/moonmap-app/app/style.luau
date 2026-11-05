@@ -75,7 +75,8 @@ return style {
 		[".sheet-close:hover"] = { background = "#00000080" },
 		[".sheet-stats"] = { padding = { 8, 0 }, border = "bottom", border_color = "hairline" },
 		[".sheet-photos"] = { gap = 8 },
-		[".sheet-hero"] = { background = "muted" },
+		-- `clip` cuts to a rectangle: what touches the sheet's top rounds itself.
+		[".sheet-hero"] = { background = "muted", radius = { 16, 16, 0, 0 } },
 		[".sheet-wait"] = { color = "muted-foreground" },
 		[".sheet-photo"] = { radius = 10, background = "muted", clip = true },
 		[".sheet-heading"] = { size = "large", weight = "bold" },
