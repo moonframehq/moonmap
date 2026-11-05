@@ -637,7 +637,11 @@ impl Native for Maps {
             self.error = format!("{error:#}");
         }
         self.refresh();
-        self.publish(host);
+        // A move comes with every frame of a gesture, and nothing in the
+        // view waits on it: what it changed is published once it is saved.
+        if message.get("action").and_then(Data::as_str) != Some("moved") {
+            self.publish(host);
+        }
     }
 
     fn tick(&mut self, host: &Handle) {
