@@ -10,15 +10,17 @@
 local TO = "provider:maps"
 local OVERHANG = 72
 local loading = use "loading"
+local map_view = use "map-view"
 local SIDEBAR = 284
+local MIN_ZOOM = 2
 local MAX_ZOOM = 19
 -- How close a launch, a place or the user's position is shown. Maps.app opens
 -- at about 15.2, but tiles bake their labels in: here, just before Moonframe's
 -- next tile level, they stay near their full size.
 local CLOSE_ZOOM = 15.8
 
--- What the view last drew, for `update` to zoom from and fit around.
-local seen = { lat = 37.788, lon = -122.4075, zoom = CLOSE_ZOOM }
+-- The map keeps its position to itself: see components/map-view.luau.
+local MAP = "map-view#main"
 
 local function send(action, extra)
 	local msg = extra or {}
@@ -61,12 +63,16 @@ local function fit(places, room_x, room_y)
 	return { lat = lat, lon = mx * 360 - 180, zoom = math.floor(z * 4) / 4 }
 end
 
+-- Orders the map to `lat`, `lon`: at `zoom`, or without one at the zoom it
+-- has, no farther out than CLOSE_ZOOM.
 local function fly(state, lat, lon, zoom)
 	-- A nudge keeps a repeat of the same spot a change the map follows.
 	state.nudge = not state.nudge
 	local nudge = if state.nudge then 1e-7 else 0
-	state.center = { lat + nudge, lon }
-	state.zoom = math.clamp(zoom or seen.zoom, 2, MAX_ZOOM)
+	state.fly = { id = (if state.fly then state.fly.id else 0) + 1, center = { lat + nudge, lon }, zoom = zoom }
+	-- A view cannot send, so the map cannot say where this leaves its zoom.
+	if zoom then state.zoom_edge = if zoom >= MAX_ZOOM then "in" elseif zoom <= MIN_ZOOM then "out" else nil
+	elseif state.zoom_edge == "out" then state.zoom_edge = nil end
 end
 
 ------------------------------------------------------------------------
@@ -317,9 +323,9 @@ local function controls(state, maps, app)
 				if maps.accuracy then "Go to My Location · within " .. tostring(maps.accuracy) .. " m · ⌘L" else "Go to My Location · ⌘L", { on = maps.location_status == "located" }),
 		},
 		ui.column { class = "map-card", gap = "none",
-			tool(ui.icon { name = "plus", size = "large", style = { color = ink } }, "zoom_in", "Zoom In · ⌘+", { disabled = seen.zoom >= MAX_ZOOM }),
+			tool(ui.icon { name = "plus", size = "large", style = { color = ink } }, "zoom_in", "Zoom In · ⌘+", { disabled = state.zoom_edge == "in" }),
 			hairline(),
-			tool(ui.icon { name = "minus", size = "large", style = { color = ink } }, "zoom_out", "Zoom Out · ⌘−", { disabled = seen.zoom <= 2 }),
+			tool(ui.icon { name = "minus", size = "large", style = { color = ink } }, "zoom_out", "Zoom Out · ⌘−", { disabled = state.zoom_edge == "out" }),
 		},
 		ui.column { width = 40, height = 40, align = "center", justify = "center", gap = "none", class = "map-round", tooltip = "North is up",
 			ui.text { "N", class = "map-compass-n", style = { color = ink } },
@@ -613,23 +619,19 @@ local function map_area(state, maps, app)
 	end
 	-- A launch opens where the user last was.
 	local start = if maps.located_before then maps.location else maps.center
-	local center = state.center or (if start then { start.lat, start.lon } else nil)
-	local zoom = state.zoom or CLOSE_ZOOM
-	if center then seen.lat, seen.lon = center[1], center[2] end
-	seen.zoom = zoom
 	return ui.column { grow = true, class = "map-area",
 		ui.column { float = { top = 0, bottom = 0, left = -OVERHANG, right = -OVERHANG },
-			ui.map {
-				grow = true,
+			map_view {
 				provider = if keyless then "esri-streets" else style :: any,
 				key = if key ~= "" then key else nil,
-				center = center,
-				glide = true,
-				zoom = zoom,
+				start = if start then { start.lat, start.lon } else nil,
+				fly = state.fly,
 				pins = pins(state, maps),
 				routes = routes(state, maps),
-				move = { action = "moved" },
-				routed = { msg = "routed" },
+				close = CLOSE_ZOOM,
+				least = MIN_ZOOM,
+				most = MAX_ZOOM,
+				edge = state.zoom_edge,
 			},
 		},
 		-- Under the sheet, so what it takes never reaches the map.
@@ -676,17 +678,18 @@ return mod {
 	init = function(previous)
 		return {
 			query = "", view = "home", guide = nil, guide_name = "", popup = nil, focus = false,
-			center = nil, zoom = nil, nudge = false, directions = nil, mode = "car", eta = nil,
+			fly = nil, zoom_edge = nil, nudge = false, directions = nil, mode = "car", eta = nil,
 			keys = {}, maps = if previous then previous.maps else {},
 		}
 	end,
 	update = function(state, msg)
 		local maps = state.maps or {}
 		if type(msg) == "string" then
-			if msg == "zoom_in" then state.center = { seen.lat, seen.lon }; state.zoom = math.min(MAX_ZOOM, seen.zoom + 1)
-			elseif msg == "zoom_out" then state.center = { seen.lat, seen.lon }; state.zoom = math.max(2, seen.zoom - 1)
+			if msg == "zoom_in" or msg == "zoom_out" then
+				-- Before the map is up there is nothing to zoom.
+				if maps.ready then return state, { { to = MAP, msg = msg } } end
 			elseif msg == "locate" then
-				if maps.location then fly(state, maps.location.lat, maps.location.lon, math.max(seen.zoom, CLOSE_ZOOM)) end
+				if maps.location then fly(state, maps.location.lat, maps.location.lon) end
 			elseif msg == "close_popup" then state.popup = nil
 			elseif msg == "close_look" then state.look = nil
 			elseif msg == "focus_search" then state.focus = not state.focus; state.view = "home"
@@ -707,12 +710,12 @@ return mod {
 			-- The first live fix: open on the user, as Maps does.
 			if state.maps.location_status == "located" and not state.found and state.maps.location then
 				state.found = true
-				fly(state, state.maps.location.lat, state.maps.location.lon, math.max(seen.zoom, CLOSE_ZOOM))
+				fly(state, state.maps.location.lat, state.maps.location.lon)
 			end
 			local after = state.maps.selected
 			-- A newly opened place: fly to it.
 			if after and (not before or before.id ~= after.id) then
-				fly(state, after.lat, after.lon, math.max(seen.zoom, CLOSE_ZOOM))
+				fly(state, after.lat, after.lon)
 				if state.directions ~= after.id then state.directions = nil; state.eta = nil end
 				if state.pending_directions == after.id then
 					state.pending_directions = nil
@@ -730,12 +733,7 @@ return mod {
 			end
 			return
 		end
-		if msg.action == "moved" then
-			state.center = { msg.lat, msg.lon }
-			state.zoom = msg.zoom
-			seen.lat, seen.lon, seen.zoom = msg.lat, msg.lon, msg.zoom
-			return state, { send("moved", { lat = msg.lat, lon = msg.lon, zoom = msg.zoom }) }
-		elseif msg.action then
+		if msg.action then
 			return state, { { to = TO, msg = msg } }
 		elseif msg.msg == "query" then
 			state.query = msg.value or ""
@@ -754,6 +752,7 @@ return mod {
 		elseif msg.msg == "key_save" then
 			state.keys[msg.style] = nil
 			return state, { send("key", { style = msg.style, key = msg.value }) }
+		elseif msg.msg == "zoom_edge" then state.zoom_edge = msg.edge
 		elseif msg.msg == "routed" then
 			local function time(seconds)
 				local minutes = math.max(1, math.round(seconds / 60))

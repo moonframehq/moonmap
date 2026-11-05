@@ -15,6 +15,12 @@ Moonmap is a Moonframe app modeled on Apple Maps, with switchable tile providers
   past both clipped edges and draws Maps-style controls and the credit
   itself. Keep the overhang symmetric so the map's center is the area's.
 
+- `app/components/map-view.luau` holds `ui.map` and alone knows the map's
+  position. Moonframe runs the view of whoever hears a message, however little
+  it changed, and a gesture sends `move` on every step: in its own instance,
+  that view is short. Every view hands the last position back, or a change of
+  pins would snap the map to the last order. The shell orders moves with `fly`.
+
 - `src/location.rs` is the only unsafe code: CoreLocation calls, made on
   the main thread (whose run loop CoreLocation needs). It is never started
   outside an `.app`, where CoreLocation throws.
