@@ -64,6 +64,26 @@ screenshots:
     done
     magick mogrify -resize 1800x -colors 256 docs/screenshots/*.png
 
+# Opens the demo, drives its map on screen (zooming, pinching, dragging, then
+# idle) and prints what each cost. Tiles are kept in target/benchmark, so the
+# first run also fetches them: run it twice for figures that compare.
+benchmark:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo build --locked -p moonmap-app --release --features benchmark
+    root=target/benchmark
+    rm -rf "$root/data" "$root/config" "$root/state"
+    mkdir -p "$root/data" "$root/config" "$root/state" "$root/cache"
+    MOONMAP_DEMO=1 \
+    MOONMAP_DATA_DIR="$PWD/$root/data" \
+    XDG_CONFIG_HOME="$PWD/$root/config" \
+    XDG_STATE_HOME="$PWD/$root/state" \
+    XDG_CACHE_HOME="$PWD/$root/cache" \
+    MOONFRAME_MAP_BENCHMARK=1 \
+    MOONFRAME_MAP_BENCHMARK_SINCE="$(python3 -c 'import time; print(time.time() * 1000)')" \
+    RUST_LOG=off \
+    target/release/moonmap
+
 # Render the app icon, which Moonframe finds in the app folder.
 icon:
     rsvg-convert -w 1024 -h 1024 assets/icon.svg -o crates/moonmap-app/app/icon.png

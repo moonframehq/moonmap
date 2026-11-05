@@ -32,4 +32,5 @@ objc2-foundation.workspace    = true
 workspace = true
 
 [features]
-capture = ["moonframe/capture"]
+benchmark = ["moonframe/map-benchmark"]
+capture   = ["moonframe/capture"]
