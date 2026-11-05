@@ -17,7 +17,7 @@ dev-bundle:
     mkdir -p target/dev/Moonmap.app/Contents/MacOS
     cp crates/moonmap-app/Info.plist target/dev/Moonmap.app/Contents/Info.plist
     cp target/debug/moonmap target/dev/Moonmap.app/Contents/MacOS/moonmap
-    codesign --force --sign - target/dev/Moonmap.app 2>/dev/null
+    if [ {{quote(os())}} = macos ]; then codesign --force --sign - target/dev/Moonmap.app 2>/dev/null; fi
 
 # A standalone release bundle in target/bundle, with the location keys.
 app:
