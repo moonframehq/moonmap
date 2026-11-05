@@ -1,6 +1,8 @@
 # Moonmap's live UI
 
 - `main.luau`: the shell (sidebar, map, controls, place card, Map Styles).
+- `components/map-view.luau`: the map and its position, away from the shell's
+  view so that a gesture does not rebuild it.
 - `style.luau`: colors and rules. Classes are prefixed `side-`, `map-`,
   `place-` and `style-`.
 - `providers/maps`: connects to the Rust provider in `../src/provider.rs`.
