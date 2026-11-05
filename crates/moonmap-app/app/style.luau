@@ -39,9 +39,6 @@ return style {
 		[".side-link:hover"] = { opacity = 0.75 },
 		[".side-footer"] = { padding = { 6, 8 }, size = "small", color = "muted-foreground" },
 		[".side-footer:hover"] = { color = "foreground" },
-		[".side-back"] = { padding = { 6, 8 }, gap = 4, color = "accent", radius = 7 },
-		[".side-back:hover"] = { background = "foreground/6" },
-		[".side-title"] = { size = "large", weight = "bold", padding = { 2, 8, 8, 8 } },
 		[".side-empty"] = { padding = { 12, 8 }, color = "muted-foreground" },
 		[".side-field"] = { radius = 8 },
 		[".badge"] = { radius = 13 },
@@ -69,7 +66,9 @@ return style {
 		[".map-banner"] = { background = "card", radius = 10, padding = { 8, 12 }, gap = 8, shadow = CARD_SHADOW },
 
 		-- Place sheet
-		[".sheet"] = { background = "card", radius = 16, shadow = CARD_SHADOW, clip = true },
+		-- Maps' sheets are UIKit's: 0.4 s on a critically damped spring (stiffness
+		-- 333.33, damping 36.515). This curve follows that spring to within 2%.
+		[".sheet"] = { background = "card", radius = 16, shadow = CARD_SHADOW, clip = true, transition = "rise 400ms cubic-bezier(0.22, 0.18, 0.14, 1)" },
 		[".sheet-body"] = { padding = { 14, 16, 16, 16 }, gap = 14 },
 		[".sheet-close"] = { radius = 14, background = "#00000059", color = "#ffffff" },
 		[".sheet-close:hover"] = { background = "#00000080" },
@@ -101,6 +100,12 @@ return style {
 		[".place-mode:selected"] = { background = "card", color = "foreground", shadow = "small" },
 		[".place-modes"] = { radius = 9, background = "muted", padding = 2, gap = 2 },
 		[".place-eta"] = { size = "headline", weight = "bold" },
+
+		-- List panel: floats beside the sidebar, like the place sheet.
+		[".panel-head"] = { padding = { 0, 12, 0, 16 } },
+		[".panel-title"] = { size = "title", weight = "bold" },
+		[".panel-body"] = { padding = { 0, 12, 12, 12 }, gap = 10 },
+		[".panel-list"] = { background = "muted", radius = 10, padding = 4 },
 
 		-- Map styles picker
 		[".styles"] = { padding = 14, gap = 10 },

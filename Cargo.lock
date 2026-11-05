@@ -4059,7 +4059,7 @@ dependencies = [
 [[package]]
 name = "moonframe"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "block2 0.6.2",
  "futures",
@@ -4093,7 +4093,7 @@ dependencies = [
 [[package]]
 name = "moonframe-acp"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "agent-client-protocol-schema",
  "moonframe-core",
@@ -4106,7 +4106,7 @@ dependencies = [
 [[package]]
 name = "moonframe-core"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "mlua",
  "thiserror 2.0.21",
@@ -4116,7 +4116,7 @@ dependencies = [
 [[package]]
 name = "moonframe-history"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "tracing",
 ]
@@ -4124,7 +4124,7 @@ dependencies = [
 [[package]]
 name = "moonframe-packages"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "moonframe-core",
  "moonframe-providers",
@@ -4138,7 +4138,7 @@ dependencies = [
 [[package]]
 name = "moonframe-providers"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "libc",
  "moonframe-core",
@@ -4152,7 +4152,7 @@ dependencies = [
 [[package]]
 name = "moonframe-store"
 version = "0.1.0"
-source = "git+https://github.com/moonframehq/moonframe?branch=main#b75705f9df0ee451e87070a858ccb05e5907e48b"
+source = "git+https://github.com/moonframehq/moonframe?branch=main#9617ae5f47318d9ef958ebc245f77483238d92dd"
 dependencies = [
  "moonframe-core",
  "rusqlite",

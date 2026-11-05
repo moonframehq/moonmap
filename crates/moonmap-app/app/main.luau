@@ -96,8 +96,9 @@ local function place_row(place, msg, extra)
 	}
 end
 
-local function nav_row(label, icon, view, count)
-	return ui.row { height = 34, shrink = false, align = "center", class = "side-row", msg = { view = view },
+local function nav_row(state, label, icon, view, count)
+	local open = state.view == view or (view == "guides" and state.view == "guide")
+	return ui.row { height = 34, shrink = false, align = "center", class = "side-row", selected = open, msg = { view = view },
 		ui.row { width = 22, shrink = false, justify = "center",
 			if string.find(icon, "^png:") then png(string.sub(icon, 5), 19) else ui.icon { name = icon, tone = "accent" },
 		},
@@ -110,28 +111,14 @@ local function label(text) return ui.text { text, class = "side-label" } end
 
 local function empty(text) return ui.text { text, class = "side-empty" } end
 
-local function back(title)
-	return {
-		ui.row { height = 30, shrink = false, align = "center", class = "side-back", msg = { view = "home" }, self_align = "start",
-			ui.icon { name = "chevron-left", size = "small" }, ui.text { "Back" },
-		},
-		ui.text { title, class = "side-title" },
-	}
-end
-
-local function places_list(items, children, none)
-	if #items == 0 then table.insert(children, empty(none)) end
-	for _, place in items do table.insert(children, place_row(place)) end
-end
-
-local function home(maps, children)
+local function home(state, maps, children)
 	table.insert(children, label("Places"))
-	table.insert(children, nav_row("Pinned", "pin", "pinned", #(maps.pinned or {})))
-	table.insert(children, nav_row("Saved Places", "png:saved", "saved", #(maps.saved or {})))
-	table.insert(children, nav_row("Guides", "book-open", "guides", #(maps.guides or {})))
-	table.insert(children, nav_row("Routes", "png:route", "routes", #(maps.routes or {})))
-	table.insert(children, nav_row("Visited Places", "png:visited", "visited"))
-	table.insert(children, nav_row("Recently Added", "png:added", "added"))
+	table.insert(children, nav_row(state, "Pinned", "pin", "pinned", #(maps.pinned or {})))
+	table.insert(children, nav_row(state, "Saved Places", "png:saved", "saved", #(maps.saved or {})))
+	table.insert(children, nav_row(state, "Guides", "book-open", "guides", #(maps.guides or {})))
+	table.insert(children, nav_row(state, "Routes", "png:route", "routes", #(maps.routes or {})))
+	table.insert(children, nav_row(state, "Visited Places", "png:visited", "visited"))
+	table.insert(children, nav_row(state, "Recently Added", "png:added", "added"))
 	local suggestions = maps.suggestions or {}
 	if #suggestions > 0 then
 		table.insert(children, label("Siri Suggestions"))
@@ -153,16 +140,6 @@ local function home(maps, children)
 	end
 end
 
-local function guides(maps, state, children)
-	table.insert(children, ui.input { id = "new-guide", value = state.guide_name, placeholder = "New guide name · Enter", change = "guide_name", submit = "guide_new", class = "side-field" })
-	local list = maps.guides or {}
-	if #list == 0 then table.insert(children, empty("Collect places into guides from a place's card.")) end
-	for _, guide in list do
-		local count = #guide.places
-		table.insert(children, place_row({ name = guide.name, subtitle = tostring(count) .. (if count == 1 then " place" else " places"), icon = "book-open", color = "#ff9f0a" }, { view = "guide", guide = guide.id }))
-	end
-end
-
 local function find_guide(maps, id)
 	for _, guide in maps.guides or {} do
 		if guide.id == id then return guide end
@@ -172,51 +149,17 @@ end
 
 local MODE_ICON = { car = "png:car", walk = "png:walk", bike = "png:bike" }
 
+-- Always the same screen: what a row opens floats over the map instead.
 local function sidebar(state, maps, app)
-	local view = state.view
 	local children = {}
 	if maps.error and maps.error ~= "" then table.insert(children, ui.text { maps.error, class = "error" }) end
-	if state.query ~= "" and (maps.query == state.query or maps.searching) and view == "home" then
+	if state.query ~= "" and (maps.query == state.query or maps.searching) then
 		table.insert(children, label(if maps.searching then "Searching…" else "Results"))
-		places_list(maps.results or {}, children, if maps.searching then "" elseif maps.online then "No results near here." else "Search needs a network connection.")
-	elseif view == "pinned" then
-		for _, child in back("Pinned") do table.insert(children, child) end
-		places_list(maps.pinned or {}, children, "Pin places from their card to keep them here.")
-	elseif view == "saved" then
-		for _, child in back("Saved Places") do table.insert(children, child) end
-		places_list(maps.saved or {}, children, "Save places from their card.")
-	elseif view == "guides" then
-		for _, child in back("Guides") do table.insert(children, child) end
-		guides(maps, state, children)
-	elseif view == "guide" then
-		local guide = find_guide(maps, state.guide)
-		if guide then
-			for _, child in back(guide.name) do table.insert(children, child) end
-			places_list(guide.places, children, "Add places to this guide from their card.")
-			table.insert(children, ui.row { class = "side-link", msg = { delete_guide = guide.id }, self_align = "start", ui.text { "Delete Guide" } })
-		else
-			for _, child in back("Guide") do table.insert(children, child) end
-		end
-	elseif view == "routes" then
-		for _, child in back("Routes") do table.insert(children, child) end
-		local routes = maps.routes or {}
-		if #routes == 0 then table.insert(children, empty("Save directions from a place's card.")) end
-		for _, route in routes do
-			table.insert(children, place_row({ name = route.to.name, subtitle = "From " .. route.from.name, icon = MODE_ICON[route.mode] or "png:car", color = "accent" }, { pick = route.to.id, directions = true, mode = route.mode },
-				ui.button { icon = "trash-2", small = true, variant = "ghost", tooltip = "Remove route", msg = send("route_remove", { route = route.id }).msg, to = TO }))
-		end
-	elseif view == "visited" then
-		for _, child in back("Visited Places") do table.insert(children, child) end
-		local visited = maps.visited or {}
-		if #visited == 0 then table.insert(children, empty("Places you open show up here.")) end
-		for _, place in visited do
-			table.insert(children, place_row(place, nil, ui.text { tostring(place.count) .. "×", class = "side-sub" }))
-		end
-	elseif view == "added" then
-		for _, child in back("Recently Added") do table.insert(children, child) end
-		places_list(maps.added or {}, children, "Places you pin, save or add to guides.")
+		local results = maps.results or {}
+		if #results == 0 then table.insert(children, empty(if maps.searching then "" elseif maps.online then "No results near here." else "Search needs a network connection.")) end
+		for _, place in results do table.insert(children, place_row(place)) end
 	else
-		home(maps, children)
+		home(state, maps, children)
 	end
 	return ui.column { grow = true, class = "side",
 		ui.row { height = 52, shrink = false, align = "center", drag = true, class = "side-top",
@@ -407,6 +350,11 @@ local function sheet_stat(title, value)
 	}
 end
 
+-- A sheet's `key`, which takes only a-z, 0-9, `-` and `_`, up to 64 of them.
+local function sheet_key(name)
+	return string.sub(string.gsub(string.lower(name), "[^a-z0-9_%-]", "-"), 1, 64)
+end
+
 -- The bar along the sheet's foot: the place's quiet actions.
 local function sheet_bar(state, maps, place)
 	local guide_items = {}
@@ -543,11 +491,99 @@ local function place_sheet(state, maps, app)
 		table.insert(content, ui.row { height = 48, shrink = false })
 	end
 	table.insert(body, ui.column { class = "sheet-body", shrink = false, table.unpack(content) })
-	return ui.column { float = { top = 8, bottom = 8, left = 8 }, width = SHEET_WIDTH, class = "sheet",
+	return ui.column { key = sheet_key("place-" .. place.id), grow = true, class = "sheet",
 		ui.column { grow = true, scroll = true, gap = "none", table.unpack(body) },
 		ui.row { float = { top = 10, right = 10 }, width = 28, height = 28, align = "center", justify = "center", class = "sheet-close", msg = "close_place", tooltip = "Close", ui.icon { name = "close", size = "small" } },
 		if state.directions ~= place.id then sheet_bar(state, maps, place) else nil,
 	}
+end
+
+------------------------------------------------------------------------
+-- List panel
+
+-- Rows in one rounded group, or `none` when there are no rows.
+local function group(rows, none)
+	if #rows == 0 then return empty(none) end
+	return ui.column { class = "panel-list", gap = "none", shrink = false, table.unpack(rows) }
+end
+
+local function place_group(items, none)
+	local rows = {}
+	for _, place in items do table.insert(rows, place_row(place)) end
+	return group(rows, none)
+end
+
+-- What the open sidebar row lists: its title, and what goes under it.
+local function panel_content(state, maps)
+	local view = state.view
+	if view == "pinned" then
+		return "Pinned", { place_group(maps.pinned or {}, "Pin places from their card to keep them here.") }
+	elseif view == "saved" then
+		return "Saved Places", { place_group(maps.saved or {}, "Save places from their card.") }
+	elseif view == "guides" then
+		local rows = {}
+		for _, guide in maps.guides or {} do
+			local count = #guide.places
+			table.insert(rows, place_row({ name = guide.name, subtitle = tostring(count) .. (if count == 1 then " place" else " places"), icon = "book-open", color = "#ff9f0a" }, { view = "guide", guide = guide.id }))
+		end
+		return "Guides", {
+			ui.input { id = "new-guide", value = state.guide_name, placeholder = "New guide name · Enter", change = "guide_name", submit = "guide_new", class = "side-field" },
+			group(rows, "Collect places into guides from a place's card."),
+		}
+	elseif view == "guide" then
+		local guide = find_guide(maps, state.guide)
+		if not guide then return "Guide", {} end
+		return guide.name, {
+			place_group(guide.places, "Add places to this guide from their card."),
+			ui.row { class = "side-link", msg = { delete_guide = guide.id }, self_align = "start", ui.text { "Delete Guide" } },
+		}
+	elseif view == "routes" then
+		local rows = {}
+		for _, route in maps.routes or {} do
+			table.insert(rows, place_row({ name = route.to.name, subtitle = "From " .. route.from.name, icon = MODE_ICON[route.mode] or "png:car", color = "accent" }, { pick = route.to.id, directions = true, mode = route.mode },
+				ui.button { icon = "trash-2", small = true, variant = "ghost", tooltip = "Remove route", msg = send("route_remove", { route = route.id }).msg, to = TO }))
+		end
+		return "Routes", { group(rows, "Save directions from a place's card.") }
+	elseif view == "visited" then
+		local rows = {}
+		for _, place in maps.visited or {} do
+			table.insert(rows, place_row(place, nil, ui.text { tostring(place.count) .. "×", class = "side-sub" }))
+		end
+		return "Visited Places", { group(rows, "Places you open show up here.") }
+	end
+	return "Recently Added", { place_group(maps.added or {}, "Places you pin, save or add to guides.") }
+end
+
+-- Takes the place sheet's spot. A place opens in its stead, and closing the
+-- place comes back to the list.
+local function list_panel(state, maps)
+	if state.view == "home" or maps.selected then return nil end
+	local title, body = panel_content(state, maps)
+	return ui.column { key = sheet_key("list-" .. state.view .. "-" .. (state.guide or "")), grow = true, class = "sheet",
+		-- With the sidebar hidden, clear the traffic lights and its button.
+		ui.row { height = 52, shrink = false, align = "center", gap = "small", class = "panel-head", style = if maps.sidebar == false then { padding = { 0, 12, 0, 124 } } else nil,
+			if state.view == "guide" then ui.row { class = "place-close", msg = { view = "guides" }, tooltip = "Guides", ui.icon { name = "chevron-left", size = "small" } } else nil,
+			ui.column { grow = true, ui.text { title, class = "panel-title", truncate = true } },
+			ui.row { class = "place-close", msg = { view = "home" }, tooltip = "Close", ui.icon { name = "close", size = "small" } },
+		},
+		ui.column { grow = true, scroll = true, class = "panel-body", table.unpack(body) },
+	}
+end
+
+-- The spot both sheets take: one sinks out of it before the next comes up (the
+-- `.sheet` transition). The empty child keeps it a keyed column while no sheet
+-- shows, or the last one would vanish rather than sink.
+local function sheet_spot(state, maps, app)
+	return ui.column { float = { top = 8, bottom = 8, left = 8 }, width = SHEET_WIDTH,
+		ui.column { key = "none", height = 0 },
+		place_sheet(state, maps, app),
+		list_panel(state, maps),
+	}
+end
+
+-- Where what sits at the map's left starts: past a sheet or panel, if open.
+local function clear_left(state, maps)
+	return if maps.selected or state.view ~= "home" then SHEET_RIGHT else 12
 end
 
 ------------------------------------------------------------------------
@@ -589,13 +625,13 @@ local function routes(state, maps)
 end
 
 -- Why the dot is grey, when the location service said why.
-local function location_notice(maps)
+local function location_notice(state, maps)
 	local text = if maps.location_status == "denied" then "Location access is off. Turn it on in System Settings › Privacy & Security › Location Services."
 		elseif maps.location_status == "unbundled" then "Your location needs Moonmap running as an app: start it with `just run` or `just app`."
 		elseif maps.location_status == "approximate" then "Precise Location is off: your position is approximate. Turn it on in System Settings › Privacy & Security › Location Services."
 		else nil
 	if not text then return nil end
-	return ui.row { float = { bottom = 12, left = (if maps.selected then SHEET_RIGHT else 12) + 52 }, max_width = 520, class = "map-banner", align = "center",
+	return ui.row { float = { bottom = 12, left = clear_left(state, maps) + 52 }, max_width = 520, class = "map-banner", align = "center",
 		ui.icon { name = "triangle-alert", tone = "warning" },
 		ui.text { text, size = "small" },
 	}
@@ -642,19 +678,23 @@ local function map_area(state, maps, app)
 				edge = state.zoom_edge,
 			},
 		},
-		-- Under the sheet, so what it takes never reaches the map.
-		if maps.selected then ui.column { float = { top = 8, bottom = 8, left = 8 }, width = SHEET_WIDTH, ui.view { name = "shield", id = "sheet" } } else nil,
-		place_sheet(state, maps, app),
+		-- Under the sheet, so what it takes never reaches the map. Always there:
+		-- were it to come and go, the sheet's spot would move among its siblings
+		-- and count as new, and a sheet opening in it would not rise.
+		ui.column { float = { top = 8, bottom = 8, left = 8 }, width = SHEET_WIDTH,
+			if maps.selected or state.view ~= "home" then ui.view { name = "shield", id = "sheet" } else nil,
+		},
+		sheet_spot(state, maps, app),
 		if maps.sidebar == false then ui.row { float = { top = 10, left = 84 }, class = "map-card", gap = "none",
 			tool(ui.icon { name = "panel-left", size = "large" }, send("sidebar", { open = true }).msg, "Show Sidebar · ⌃⌘S", { to = TO }),
 		} else nil,
-		if keyless then ui.row { float = { top = 12, left = if maps.selected then SHEET_RIGHT else 12 }, class = "map-banner", align = "center",
+		if keyless then ui.row { float = { top = 12, left = clear_left(state, maps) }, class = "map-banner", align = "center",
 			ui.icon { name = "key-round", tone = "warning" },
 			ui.text { "This style needs an API key; showing Explore until one is set.", size = "small" },
 		} else nil,
-		location_notice(maps),
+		location_notice(state, maps),
 		controls(state, maps, app),
-		ui.row { float = { bottom = 12, left = if maps.selected then SHEET_RIGHT else 12 }, width = 40, height = 40, align = "center", justify = "center", class = if maps.look_around then "map-round map-tool" else "map-round map-tool map-off",
+		ui.row { float = { bottom = 12, left = clear_left(state, maps) }, width = 40, height = 40, align = "center", justify = "center", class = if maps.look_around then "map-round map-tool" else "map-round map-tool map-off",
 			msg = look_message(maps, maps.selected and maps.selected.id), tooltip = if maps.look_around then "Look Around" else NO_LOOK,
 			png("binoculars", 20, app.dark),
 		},
@@ -771,9 +811,17 @@ return mod {
 			local meters = msg.meters or 0
 			state.eta = { time = time(msg.seconds or 0), distance = if meters < 1000 then tostring(math.round(meters / 10) * 10) .. " m" else string.format("%.1f km", meters / 1000) }
 		elseif msg.view then
-			state.view = msg.view
+			-- A place covers the panel: its row shows the panel again, where a
+			-- second click would otherwise close it.
+			local covered = maps.selected ~= nil
+			local again = msg.view == state.view and msg.guide == state.guide and not covered
+			state.view = if again then "home" else msg.view
 			state.guide = msg.guide
 			state.query = ""
+			if covered then
+				state.directions = nil; state.eta = nil
+				return state, { send("close") }
+			end
 		elseif msg.delete_guide then
 			state.view = "guides"
 			return state, { send("guide_remove", { guide = msg.delete_guide }) }
