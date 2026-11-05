@@ -196,7 +196,7 @@ local function sidebar(state, maps, app)
 		local routes = maps.routes or {}
 		if #routes == 0 then table.insert(children, empty("Save directions from a place's card.")) end
 		for _, route in routes do
-			table.insert(children, place_row({ name = route.to.name, subtitle = "From " .. route.from.name, icon = MODE_ICON[route.mode] or "png:car", color = "#0a84ff" }, { pick = route.to.id, directions = true, mode = route.mode },
+			table.insert(children, place_row({ name = route.to.name, subtitle = "From " .. route.from.name, icon = MODE_ICON[route.mode] or "png:car", color = "accent" }, { pick = route.to.id, directions = true, mode = route.mode },
 				ui.button { icon = "trash-2", small = true, variant = "ghost", tooltip = "Remove route", msg = send("route_remove", { route = route.id }).msg, to = TO }))
 		end
 	elseif view == "visited" then
@@ -299,6 +299,14 @@ local function avatar_menu(maps, app)
 	}
 end
 
+-- The location arrow, drawn rather than a PNG from app/icons so that it can
+-- take the theme's accent.
+local function location_arrow(color)
+	return ui.paths { width = 18, height = 18, paths = {
+		{ points = { 2.25, 8.25, 16.5, 1.5, 9.75, 15.75, 8.25, 9.75, 2.25, 8.25, 16.5, 1.5 }, color = color, stroke = 1.35, radius = 0.75 },
+	} }
+end
+
 local function controls(state, maps, app)
 	local dark = app.dark
 	local ink = if dark then "#e5e5ea" else "#3c3c43"
@@ -313,7 +321,7 @@ local function controls(state, maps, app)
 				tool(ui.icon { name = "map", size = "large", style = { color = ink } }, { popup = "styles" }, "Map Styles", { on = state.popup == "styles" }),
 			},
 			hairline(),
-			tool(png("location", 18, if maps.location_status == "located" then "blue" else dark), "locate",
+			tool(location_arrow(if maps.location_status == "located" then "accent" else ink), "locate",
 				if maps.accuracy then "Go to My Location · within " .. tostring(maps.accuracy) .. " m · ⌘L" else "Go to My Location · ⌘L", { on = maps.location_status == "located" }),
 		},
 		ui.column { class = "map-card", gap = "none",
@@ -559,11 +567,11 @@ local function pins(state, maps)
 	for _, place in showing do add(place, { shape = "disc", icon = place.icon, color = place.color }) end
 	for _, place in maps.pinned or {} do add(place, { shape = "balloon", icon = "pin", color = "#f0424e" }) end
 	local here = maps.location
-	-- Maps' blue dot, breathing while the fix is live; grey when it is
-	-- only where the user was last seen.
+	-- Maps' dot in the theme's accent, breathing while the fix is live; grey
+	-- when it is only where the user was last seen.
 	if here then
 		local live = maps.location_status == "located"
-		table.insert(list, { lat = here.lat, lon = here.lon, color = if live then "#0a84ff" else "#8e8e93", selected = true, pulse = live, msg = "locate" })
+		table.insert(list, { lat = here.lat, lon = here.lon, color = if live then "accent" else "#8e8e93", selected = true, pulse = live, msg = "locate" })
 	end
 	return list
 end
@@ -571,7 +579,7 @@ end
 local function routes(state, maps)
 	local place, here = maps.selected, maps.location
 	if not (place and here and state.directions == place.id) then return {} end
-	return { { via = { here.lat, here.lon, place.lat, place.lon }, mode = state.mode, color = "#0a84ff", stroke = 6 } }
+	return { { via = { here.lat, here.lon, place.lat, place.lon }, mode = state.mode, color = "accent", stroke = 6 } }
 end
 
 -- Why the dot is grey, when the location service said why.
