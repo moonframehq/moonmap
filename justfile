@@ -1,3 +1,5 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 nightly_toolchain := "nightly-2026-06-20"
 
 default:
@@ -5,19 +7,38 @@ default:
 
 # Runs the debug build from target/dev/Moonmap.app: macOS gives your
 # location only to an app bundle. Luau still reloads from the source tree.
+[macos]
 run *args: dev-bundle
     target/dev/Moonmap.app/Contents/MacOS/moonmap {{args}}
 
+[linux]
+run *args:
+    scripts/with-display.sh cargo run --locked -p moonmap-app -- {{args}}
+
+[windows]
+run *args:
+    cargo run --locked -p moonmap-app -- {{args}}
+
 # Opens at Union Square on a sample library of public San Francisco places.
+[macos]
 demo: dev-bundle
     MOONMAP_DEMO=1 target/dev/Moonmap.app/Contents/MacOS/moonmap
 
+[linux]
+demo:
+    MOONMAP_DEMO=1 scripts/with-display.sh cargo run --locked -p moonmap-app
+
+[windows]
+demo:
+    $env:MOONMAP_DEMO = '1'; cargo run --locked -p moonmap-app
+
+[macos]
 dev-bundle:
     cargo build --locked -p moonmap-app
     mkdir -p target/dev/Moonmap.app/Contents/MacOS
     cp crates/moonmap-app/Info.plist target/dev/Moonmap.app/Contents/Info.plist
     cp target/debug/moonmap target/dev/Moonmap.app/Contents/MacOS/moonmap
-    if [ {{quote(os())}} = macos ]; then codesign --force --sign - target/dev/Moonmap.app 2>/dev/null; fi
+    codesign --force --sign - target/dev/Moonmap.app 2>/dev/null
 
 # A standalone release bundle in target/bundle, with the location keys.
 app:

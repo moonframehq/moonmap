@@ -17,16 +17,20 @@ use {
 #[folder = "app"]
 struct AppFiles;
 
-/// Where the library lives: `MOONMAP_DATA_DIR`, else Application Support.
+/// Where the library lives: `MOONMAP_DATA_DIR`, else `%APPDATA%` on Windows
+/// and Application Support elsewhere.
 fn root(demo: bool) -> Result<PathBuf> {
     if let Some(root) = std::env::var_os("MOONMAP_DATA_DIR") {
         return Ok(root.into());
     }
+    let name = if demo { "moonmap-demo" } else { "moonmap" };
+    if cfg!(windows) {
+        let data = std::env::var_os("APPDATA").context("APPDATA is unset; set MOONMAP_DATA_DIR")?;
+        return Ok(PathBuf::from(data).join(name));
+    }
     let home =
         PathBuf::from(std::env::var_os("HOME").context("HOME is unset; set MOONMAP_DATA_DIR")?);
-    Ok(home
-        .join("Library/Application Support")
-        .join(if demo { "moonmap-demo" } else { "moonmap" }))
+    Ok(home.join("Library/Application Support").join(name))
 }
 
 /// The folder `ui.image` may show files from, as Moonframe works it out.

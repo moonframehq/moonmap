@@ -80,7 +80,7 @@ can take several minutes.
 
 ```sh
 just demo        # a fixed position at Union Square and public San Francisco places
-just run         # your own library, in ~/Library/Application Support/moonmap
+just run         # your own library: ~/Library/Application Support/moonmap, or %APPDATA%\moonmap on Windows
 just app         # a standalone release bundle in target/bundle
 just screenshot target/screenshots/home.png home   # home, place, directions, styles, results, dark
 just screenshots # retake the screenshots above
@@ -155,8 +155,9 @@ an ACP mode, or Node for `npx`.
   leaves them out until Moonframe adds one.
 - Apple's points of interest come from Apple's vector data. Here, what you
   see is whatever the chosen tile style draws.
-- Moonmap is built and run on macOS. My Location is macOS only, and the Linux
-  build has not been tested.
+- `just run` and `just demo` work on macOS, Windows, and Linux under Wayland
+  or X11. On Linux they find the session's display when the terminal has
+  none. My Location is macOS only, and the Windows build has not been tested.
 
 ## License
 
