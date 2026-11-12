@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Signs the packaged Moonmap.app (APP_TAR, from package-macos.sh) with a
 # Developer ID under the hardened runtime, notarizes and staples it, then
-# zips it in OUT_DIR as Moonmap-VERSION-universal-apple-darwin.zip. It never
+# builds, signs, notarizes and staples the disk image in OUT_DIR. It never
 # launches the app. Credentials come from the environment (the release
 # environment's secrets) and live in a throwaway keychain.
 set +x
@@ -19,8 +19,8 @@ done
 version=$(scripts/release/version.sh)
 entitlements=$(pwd)/assets/macos/Moonmap.entitlements
 mkdir -p "$2"
-zip=$(cd "$2" && pwd)/Moonmap-$version-universal-apple-darwin.zip
-[[ ! -e $zip ]] || { echo "refusing to overwrite $zip" >&2; exit 1; }
+dmg=$(cd "$2" && pwd)/Moonmap-$version-universal-apple-darwin.dmg
+[[ ! -e $dmg ]] || { echo "refusing to overwrite $dmg" >&2; exit 1; }
 
 umask 077
 tmp=$(mktemp -d)
@@ -77,16 +77,22 @@ apple() {
     done
     return 1
 }
+notarize() {
+    apple notarytool submit "$1" --key "$tmp/AuthKey.p8" --key-id "$APPLE_API_KEY_ID" \
+        --issuer "$APPLE_API_ISSUER_ID" --wait --output-format json > "$tmp/notary.json"
+    jq -e '.status == "Accepted"' "$tmp/notary.json" >/dev/null \
+        || { cat "$tmp/notary.json" >&2; echo "notarization was not accepted" >&2; exit 1; }
+}
 ditto -c -k --keepParent "$app" "$tmp/Moonmap.zip"
-apple notarytool submit "$tmp/Moonmap.zip" --key "$tmp/AuthKey.p8" --key-id "$APPLE_API_KEY_ID" \
-    --issuer "$APPLE_API_ISSUER_ID" --wait --output-format json > "$tmp/notary.json"
-jq -e '.status == "Accepted"' "$tmp/notary.json" >/dev/null \
-    || { cat "$tmp/notary.json" >&2; echo "notarization was not accepted" >&2; exit 1; }
+notarize "$tmp/Moonmap.zip"
 apple stapler staple "$app"
 spctl --assess --type execute --verbose=2 "$app"
 
-# The stapled app, zipped again for users.
-ditto -c -k --sequesterRsrc --keepParent "$app" "$tmp/stapled.zip"
-chmod 644 "$tmp/stapled.zip"
-mv "$tmp/stapled.zip" "$zip"
-echo "$zip"
+scripts/release/make-dmg.sh "$app" "$tmp/Moonmap.dmg" >/dev/null
+sign "$tmp/Moonmap.dmg"
+notarize "$tmp/Moonmap.dmg"
+apple stapler staple "$tmp/Moonmap.dmg"
+spctl --assess --type open --context context:primary-signature --verbose=2 "$tmp/Moonmap.dmg"
+chmod 644 "$tmp/Moonmap.dmg"
+mv "$tmp/Moonmap.dmg" "$dmg"
+echo "$dmg"

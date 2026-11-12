@@ -25,7 +25,8 @@ The workflow then:
 2. builds every package (`package.yml`) while clippy, the tests and the
    app's `--check` run on the same commit; nothing below runs until they
    pass;
-3. signs the app with the Developer ID, notarizes and staples it, and signs
+3. signs the app with the Developer ID, notarizes and staples it, and builds
+   the disk image around it, signed, notarized and stapled too; and signs
    the Windows executable with Authenticode (each when its signing is set
    up, see below);
 4. writes `SHA256SUMS`, signs every file with Sigstore (keyless, as this
@@ -42,7 +43,7 @@ environment. Protect it (Settings → Environments) so it only accepts `main`.
 
 | File | For |
 | --- | --- |
-| `Moonmap-<v>-universal-apple-darwin.zip` | macOS 13+, Apple Silicon and Intel: `Moonmap.app`, to drag into Applications |
+| `Moonmap-<v>-universal-apple-darwin.dmg` | macOS 13+, Apple Silicon and Intel: drag Moonmap onto the Applications shortcut |
 | `Moonmap-<v>-{x86_64,aarch64}-unknown-linux-gnu.tar.gz` | Linux: a prefix (`bin/moonmap`, `share/` with the app, its icon and `.desktop` file) to copy under `/usr/local` or `~/.local` |
 | `Moonmap-<v>-x86_64-pc-windows-msvc.zip` | Windows: run `moonmap.exe` from the unpacked folder |
 | `SHA256SUMS` | the checksum of every file above |
@@ -55,16 +56,16 @@ app's Luau and Moonframe's toolbox ship beside it, where it looks for them.
 
 ```sh
 sha256sum --check --ignore-missing SHA256SUMS
-gh attestation verify Moonmap-<v>-universal-apple-darwin.zip --repo moonframehq/moonmap
-cosign verify-blob Moonmap-<v>-universal-apple-darwin.zip \
-  --bundle Moonmap-<v>-universal-apple-darwin.zip.sigstore.json \
+gh attestation verify Moonmap-<v>-universal-apple-darwin.dmg --repo moonframehq/moonmap
+cosign verify-blob Moonmap-<v>-universal-apple-darwin.dmg \
+  --bundle Moonmap-<v>-universal-apple-darwin.dmg.sigstore.json \
   --certificate-identity https://github.com/moonframehq/moonmap/.github/workflows/release.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 ## Setting up macOS signing
 
-Without it, releases still publish, but the app is signed ad hoc: Gatekeeper
+Without it, releases still publish, but the disk image's app is signed ad hoc: Gatekeeper
 refuses to open it until the user allows it in System Settings → Privacy &
 Security. To sign and notarize, add to the `release` environment:
 
@@ -80,6 +81,14 @@ Security. To sign and notarize, add to the `release` environment:
 `MACOS_SIGNING_IDENTITY` is read outside the environment too, to decide
 whether to sign, so set it as a repository variable as well. The values are
 the same as Moonframe's (see its `docs/releasing.md`).
+
+The disk image opens on a laid-out window: the app and an Applications
+shortcut over a background with an arrow between them, no toolbar, and the
+app's icon on the volume. `scripts/release/make-dmg.sh` builds it with
+dmgbuild, pinned by hash in `assets/macos/dmg/requirements.txt` and
+installed as wheels into a throwaway virtualenv. The window is
+`assets/macos/dmg/settings.py`; the background is drawn by
+`scripts/draw-dmg-background.swift`.
 
 The app runs under the hardened runtime with the entitlements in
 `assets/macos/Moonmap.entitlements`: location (CoreLocation answers nothing

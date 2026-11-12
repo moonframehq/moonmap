@@ -1,7 +1,7 @@
 name: Package
 
 # Builds every release package, unsigned, from optimized builds: the macOS
-# universal app, Linux tarballs, a Windows zip. The release workflow calls
+# universal app in a disk image, Linux tarballs, a Windows zip. The release workflow calls
 # this for the bytes it signs and publishes; on its own it runs when what the
 # packages are made from changes, so a packaging mistake fails the pull
 # request rather than a release.
@@ -67,7 +67,7 @@ jobs:
           for target in aarch64-apple-darwin x86_64-apple-darwin; do
             cargo build --locked --release -p moonmap-app --target "$target"
           done
-      - name: Package the app
+      - name: Package the app and disk image
         run: |
           scripts/release/package-macos.sh dist \
             target/aarch64-apple-darwin/release/moonmap \

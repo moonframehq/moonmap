@@ -2,8 +2,8 @@
 # Packages the macOS release in OUT_DIR from one executable per
 # architecture: a universal Moonmap.app (`moonmap bundle`, with Moonmap's
 # location keys merged into its Info.plist, signed ad hoc), Moonmap.app.tar
-# for the signing job, and the zip users download,
-# Moonmap-VERSION-universal-apple-darwin.zip. Developer ID signing and
+# for the signing job, and the disk image users download,
+# Moonmap-VERSION-universal-apple-darwin.dmg. Developer ID signing and
 # notarization happen later, in scripts/release/sign-macos.sh.
 set -euo pipefail
 [[ $# -ge 2 ]] || { echo "usage: package-macos.sh OUT_DIR BINARY..." >&2; exit 2; }
@@ -40,6 +40,4 @@ for arch in $(lipo -archs "$app/Contents/MacOS/moonmap"); do
 done
 
 tar -C "$work/bundle" -cf "$out/Moonmap.app.tar" Moonmap.app
-# ditto keeps the bundle's signature, links and permissions.
-ditto -c -k --sequesterRsrc --keepParent "$app" "$out/Moonmap-$version-universal-apple-darwin.zip"
-ls -1 "$out"
+scripts/release/make-dmg.sh "$app" "$out/Moonmap-$version-universal-apple-darwin.dmg"

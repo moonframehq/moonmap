@@ -89,7 +89,7 @@ jobs:
           echo "Releasing v$version from $EXPECTED_SHA"
       # Developer ID signing is on once MACOS_SIGNING_IDENTITY is set (with
       # the release environment's secrets, see docs/releasing.md). Until then
-      # the app ships signed ad hoc, and Gatekeeper asks users to approve it
+      # the disk image's app ships signed ad hoc, and Gatekeeper asks users to approve it
       # on first launch.
       - id: macos-signing
         env:
@@ -99,7 +99,7 @@ jobs:
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::MACOS_SIGNING_IDENTITY is not set: the macOS app ships without Developer ID signing or notarization"
+            echo "::warning::MACOS_SIGNING_IDENTITY is not set: the macOS disk image ships without Developer ID signing or notarization"
           fi
       # Authenticode signing (Azure Artifact Signing) is on once
       # WINDOWS_SIGNING_SUBJECT is set, see docs/releasing.md. Until then the
@@ -150,7 +150,7 @@ jobs:
       ref: ${{ needs.validate.outputs.sha }}
 
   # Signs the tested app without running it, notarizes and staples it, and
-  # zips it again.
+  # rebuilds the disk image around the stapled app.
   sign-macos:
     name: Sign and notarize macOS
     needs: [validate, test, package]
@@ -182,7 +182,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: signed-macos
-          path: signed/*.zip
+          path: signed/*.dmg
           if-no-files-found: error
           retention-days: 7
 
@@ -308,11 +308,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir dist
-          app="Moonmap-$VERSION-universal-apple-darwin.zip"
+          dmg="Moonmap-$VERSION-universal-apple-darwin.dmg"
           if [[ "$MACOS_SIGNED" == true ]]; then
-            mv "signed/$app" dist/
+            mv "signed/$dmg" dist/
           else
-            mv "packages/$app" dist/
+            mv "packages/$dmg" dist/
           fi
           for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
             mv "packages/Moonmap-$VERSION-$target.tar.gz" dist/
