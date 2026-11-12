@@ -99,10 +99,12 @@ otherwise), JIT for Luau, and the microphone for dictation.
 Without it, the zip's `moonmap.exe` is unsigned and SmartScreen warns on
 first launch. It is signed with Azure Artifact Signing by the account and
 certificate profile the author's apps share. The `sign-windows` job exchanges
-the `release` environment's GitHub OIDC token for an Azure token, so the app
-registration needs a federated credential trusting
-`repo:moonframehq/moonmap:environment:release` (as Moonframe's trusts its own
-repository). Add to the `release` environment, all as variables:
+the `release` environment's GitHub OIDC token for an Azure token as
+Moonframe's signing app registration, whose federated credential
+`moonframehq-moonmap-release` trusts only
+`repo:moonframehq@351295873/moonmap@1445384634:environment:release` (GitHub
+names the owner and repository with their ids too, so a rename or transfer
+needs a new credential). Add to the `release` environment, all as variables:
 
 | Name | Value |
 | --- | --- |
