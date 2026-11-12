@@ -51,6 +51,24 @@ app:
 build:
     cargo build --locked -p moonmap-app --release
 
+# Package this Mac's release build as the Package workflow does (one architecture).
+[macos]
+package out="target/dist":
+    cargo build --locked -p moonmap-app --release
+    scripts/release/package-macos.sh {{out}} target/release/moonmap
+
+# Publish main's HEAD as v<Cargo.toml's version> via release.yml; see docs/releasing.md.
+release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git fetch --quiet origin main
+    sha=$(git rev-parse origin/main)
+    version=$(scripts/release/version.sh)
+    test "$(git rev-parse HEAD)" = "$sha" || { echo "check out origin/main ($sha) first" >&2; exit 1; }
+    test -z "$(git status --porcelain)" || { echo "the working tree is not clean" >&2; exit 1; }
+    echo "Releasing v$version from $sha"
+    gh workflow run release.yml --ref main -f expected_sha="$sha"
+
 check:
     cargo run --locked -p moonmap-app -- --check
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Under the hardened runtime, CoreLocation answers only an app that
+         claims location; Moonmap shows where you are and routes from it. -->
+    <key>com.apple.security.personal-information.location</key>
+    <true/>
+    <!-- Luau may compile to native code, which maps memory executable; the
+         hardened runtime refuses that without this. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <!-- Moonframe's dictation: under the hardened runtime a microphone
+         without this delivers only silence. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+</dict>
+</plist>
