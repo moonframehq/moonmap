@@ -663,6 +663,9 @@ local function map_area(state, maps, app)
 	end
 	-- A launch opens where the user last was.
 	local start = if maps.located_before then maps.location else maps.center
+	-- gpui-maps draws its mark in the bottom-left corner: the round button
+	-- there stands above it.
+	local tool_bottom = if string.sub(style, 1, 7) == "vector-" then 36 else 12
 	return ui.column { grow = true, class = "map-area",
 		ui.column { float = { top = 0, bottom = 0, left = -OVERHANG, right = -OVERHANG },
 			map_view {
@@ -694,7 +697,7 @@ local function map_area(state, maps, app)
 		} else nil,
 		location_notice(state, maps),
 		controls(state, maps, app),
-		ui.row { float = { bottom = 12, left = clear_left(state, maps) }, width = 40, height = 40, align = "center", justify = "center", class = if maps.look_around then "map-round map-tool" else "map-round map-tool map-off",
+		ui.row { float = { bottom = tool_bottom, left = clear_left(state, maps) }, width = 40, height = 40, align = "center", justify = "center", class = if maps.look_around then "map-round map-tool" else "map-round map-tool map-off",
 			msg = look_message(maps, maps.selected and maps.selected.id), tooltip = if maps.look_around then "Look Around" else NO_LOOK,
 			png("binoculars", 20, app.dark),
 		},
